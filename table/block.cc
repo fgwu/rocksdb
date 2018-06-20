@@ -20,6 +20,7 @@
 #include "port/stack_trace.h"
 #include "rocksdb/comparator.h"
 #include "table/block_prefix_index.h"
+#include "table/block_hash_index.h"
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/logging.h"
@@ -153,7 +154,9 @@ void BlockIter::Seek(const Slice& target) {
   if (prefix_index_) {
     ok = PrefixSeek(target, &index);
   } else {
-    ok = BinarySeek(seek_key, 0, num_restarts_ - 1, &index);
+    // TODO fwu target of seek_key?
+    ok = hash_index_ ? hash_index_->Seek(target, &index)
+      : BinarySeek(seek_key, 0, num_restarts_ - 1, &index);
   }
 
   if (!ok) {
@@ -463,10 +466,13 @@ BlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
     ret_iter->Invalidate(Status::OK());
     return ret_iter;
   } else {
+    // fwu TODO what is total_order_seek?
     BlockPrefixIndex* prefix_index_ptr =
         total_order_seek ? nullptr : prefix_index_.get();
+    BlockHashIndex* hash_index_ptr =
+        total_order_seek ? nullptr : hash_index_.get();
     ret_iter->Initialize(cmp, ucmp, data_, restart_offset_, num_restarts_,
-                         prefix_index_ptr, global_seqno_,
+                         prefix_index_ptr, hash_index_ptr, global_seqno_,
                          read_amp_bitmap_.get(), key_includes_seq, cachable());
 
     if (read_amp_bitmap_) {
@@ -484,10 +490,17 @@ void Block::SetBlockPrefixIndex(BlockPrefixIndex* prefix_index) {
   prefix_index_.reset(prefix_index);
 }
 
+void Block::SetBlockHashIndex(BlockHashIndex* hash_index) {
+  hash_index_.reset(hash_index);
+}
+
 size_t Block::ApproximateMemoryUsage() const {
   size_t usage = usable_size();
   if (prefix_index_) {
     usage += prefix_index_->ApproximateMemoryUsage();
+  }
+  if (hash_index_) {
+    usage += hash_index_->ApproximateMemoryUsage();
   }
   return usage;
 }
