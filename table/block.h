@@ -26,6 +26,7 @@
 #include "rocksdb/options.h"
 #include "rocksdb/statistics.h"
 #include "table/block_prefix_index.h"
+#include "table/block_hash_index.h"
 #include "table/internal_iterator.h"
 #include "util/random.h"
 #include "util/sync_point.h"
@@ -37,6 +38,7 @@ struct BlockContents;
 class Comparator;
 class BlockIter;
 class BlockPrefixIndex;
+class BlockHashIndex;
 
 // BlockReadAmpBitmap is a bitmap that map the rocksdb::Block data bytes to
 // a bitmap with ratio bytes_per_bit. Whenever we access a range of bytes in
@@ -155,6 +157,7 @@ class Block {
     return contents_.compression_type;
   }
 
+  // TODO fwu what is use_hash_index?
   // If hash index lookup is enabled and `use_hash_index` is true. This block
   // will do hash lookup for the key prefix.
   //
@@ -178,6 +181,7 @@ class Block {
                          Statistics* stats = nullptr,
                          bool key_includes_seq = true);
   void SetBlockPrefixIndex(BlockPrefixIndex* prefix_index);
+  void SetBlockHashIndex(BlockHashIndex* hash_index);
 
   // Report an approximation of how much memory has been used.
   size_t ApproximateMemoryUsage() const;
@@ -191,6 +195,7 @@ class Block {
   uint32_t restart_offset_;     // Offset in data_ of restart array
   uint32_t num_restarts_;
   std::unique_ptr<BlockPrefixIndex> prefix_index_;
+  std::unique_ptr<BlockHashIndex> hash_index_;
   std::unique_ptr<BlockReadAmpBitmap> read_amp_bitmap_;
   // All keys in the block will have seqno = global_seqno_, regardless of
   // the encoded value (kDisableGlobalSequenceNumber means disabled)
@@ -216,6 +221,7 @@ class BlockIter final : public InternalIterator {
         restart_index_(0),
         status_(Status::OK()),
         prefix_index_(nullptr),
+        hash_index_(nullptr),
         key_pinned_(false),
         key_includes_seq_(true),
         global_seqno_(kDisableGlobalSequenceNumber),
@@ -225,19 +231,24 @@ class BlockIter final : public InternalIterator {
 
   BlockIter(const Comparator* comparator, const Comparator* user_comparator,
             const char* data, uint32_t restarts, uint32_t num_restarts,
-            BlockPrefixIndex* prefix_index, SequenceNumber global_seqno,
+            BlockPrefixIndex* prefix_index,
+            BlockHashIndex* hash_index,
+            SequenceNumber global_seqno,
             BlockReadAmpBitmap* read_amp_bitmap, bool key_includes_seq,
             bool block_contents_pinned)
       : BlockIter() {
     Initialize(comparator, user_comparator, data, restarts, num_restarts,
-               prefix_index, global_seqno, read_amp_bitmap, key_includes_seq,
+               prefix_index, hash_index, global_seqno, read_amp_bitmap,
+               key_includes_seq,
                block_contents_pinned);
   }
 
   void Initialize(const Comparator* comparator,
                   const Comparator* user_comparator, const char* data,
                   uint32_t restarts, uint32_t num_restarts,
-                  BlockPrefixIndex* prefix_index, SequenceNumber global_seqno,
+                  BlockPrefixIndex* prefix_index,
+                  BlockHashIndex* hash_index,
+                  SequenceNumber global_seqno,
                   BlockReadAmpBitmap* read_amp_bitmap, bool key_includes_seq,
                   bool block_contents_pinned) {
     assert(data_ == nullptr);           // Ensure it is called only once
@@ -251,6 +262,7 @@ class BlockIter final : public InternalIterator {
     current_ = restarts_;
     restart_index_ = num_restarts_;
     prefix_index_ = prefix_index;
+    hash_index_ = hash_index;
     global_seqno_ = global_seqno;
     read_amp_bitmap_ = read_amp_bitmap;
     last_bitmap_offset_ = current_ + 1;
@@ -349,6 +361,7 @@ class BlockIter final : public InternalIterator {
   Slice value_;
   Status status_;
   BlockPrefixIndex* prefix_index_;
+  BlockHashIndex* hash_index_;
   bool key_pinned_;
   // Key is in InternalKey format
   bool key_includes_seq_;
