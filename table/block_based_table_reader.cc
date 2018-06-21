@@ -554,6 +554,46 @@ class HashIndexReader : public IndexReader {
   const bool index_key_includes_seq_;
 };
 
+//TODO(fwu)
+class SuffixIndexReader : public IndexReader {
+ public:
+  static Status Create() {
+    // TOdO(fwu)
+    return Status::OK();
+  }
+
+  virtual InternalIterator* NewIterator(BlockIter* iter = nullptr,
+                                        bool total_order_seek = true,
+                                        bool /*dont_care*/ = true) override {
+    UNUSED(iter);
+    UNUSED(total_order_seek);
+    return nullptr;
+  }
+
+  virtual size_t size() const override { return 0; }
+  virtual size_t usable_size() const override {
+    return 0;
+  }
+
+  virtual size_t ApproximateMemoryUsage() const override {
+    return 0;
+  }
+
+ private:
+  SuffixIndexReader(const InternalKeyComparator* icomparator,
+                    std::unique_ptr<Block>&& index_block, Statistics* stats,
+                    const bool index_key_includes_seq)
+      : IndexReader(icomparator, stats)
+    {
+      UNUSED(index_key_includes_seq);
+      UNUSED(index_block);
+//      assert(index_block_ != nullptr);
+    }
+
+  ~SuffixIndexReader() {
+  }
+};
+
 // Helper function to setup the cache key's prefix for the Table.
 void BlockBasedTable::SetupCacheKeyPrefix(Rep* rep, uint64_t file_size) {
   assert(kMaxCacheKeyPrefixSize >= 10);
@@ -2479,15 +2519,18 @@ Status BlockBasedTable::CreateIndexReader(
         }
         meta_index_iter = meta_iter_guard.get();
       }
-
       return HashIndexReader::Create(
           rep_->internal_prefix_transform.get(), footer, file, prefetch_buffer,
           rep_->ioptions, icomparator, footer.index_handle(), meta_index_iter,
           index_reader, rep_->hash_index_allow_collision,
           rep_->persistent_cache_options,
           rep_->table_properties == nullptr ||
-              rep_->table_properties->index_key_is_user_key == 0);
+          rep_->table_properties->index_key_is_user_key == 0);
     }
+    case BlockBasedTableOptions::kSuffixSearch: {
+      return SuffixIndexReader::Create();
+    }
+
     default: {
       std::string error_message =
           "Unrecognized index type: " + ToString(index_type_on_file);
