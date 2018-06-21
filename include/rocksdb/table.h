@@ -89,6 +89,9 @@ struct BlockBasedTableOptions {
 
     // A two-level index implementation. Both levels are binary search indexes.
     kTwoLevelIndexSearch,
+
+    // Hash index using the unique suffix for each key in the block.
+    kSuffixSearch,
   };
 
   IndexType index_type = kBinarySearch;

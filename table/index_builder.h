@@ -384,4 +384,40 @@ class PartitionedIndexBuilder : public IndexBuilder {
   // true if it should cut the next filter partition block
   bool cut_filter_block = false;
 };
+
+// TODO(fwu) descriptin
+#define UNUSED(x) assert (sizeof(x) == sizeof(x))
+class SuffixIndexBuilder : public IndexBuilder {
+ public:
+  // TODO(fwu)
+  explicit SuffixIndexBuilder(const InternalKeyComparator* comparator)
+      : IndexBuilder(comparator) {}
+  // TODO(fwu)
+  virtual void AddIndexEntry(std::string* last_key_in_current_block,
+                             const Slice* first_key_in_next_block,
+                     const BlockHandle& block_handle) override {
+    UNUSED(last_key_in_current_block);
+    UNUSED(first_key_in_next_block);
+    UNUSED(block_handle);
+  }
+  // TODO(fwu)
+  virtual void OnKeyAdded(const Slice& key) override {
+    UNUSED(key);
+  }
+
+  // TODO(fwu)
+  virtual Status Finish(IndexBlocks* index_blocks,
+                const BlockHandle& last_partition_block_handle) override {
+    UNUSED(index_blocks);
+    UNUSED(last_partition_block_handle);
+    return Status::OK();
+  }
+
+  // TODO (fwu)
+  virtual size_t EstimatedSize() const override { return 0; }
+
+  // TODO (fwu)
+  virtual bool seperator_is_key_plus_seq() override { return true; }
+};
+
 }  // namespace rocksdb

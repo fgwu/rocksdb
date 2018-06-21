@@ -35,21 +35,26 @@ IndexBuilder* IndexBuilder::CreateIndexBuilder(
                                          table_opt.index_block_restart_interval,
                                          table_opt.format_version);
     }
-  break;
+      break;
     case BlockBasedTableOptions::kHashSearch: {
       result = new HashIndexBuilder(comparator, int_key_slice_transform,
                                     table_opt.index_block_restart_interval,
                                     table_opt.format_version);
     }
-  break;
+      break;
     case BlockBasedTableOptions::kTwoLevelIndexSearch: {
       result = PartitionedIndexBuilder::CreateIndexBuilder(comparator, table_opt);
     }
-    break;
+      break;
+    case BlockBasedTableOptions::kSuffixSearch: {
+      // TODO(fwu)
+      result = new SuffixIndexBuilder(comparator);
+    }
+      break;
     default: {
       assert(!"Do not recognize the index type ");
     }
-  break;
+      break;
   }
   return result;
 }
