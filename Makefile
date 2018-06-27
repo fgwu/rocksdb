@@ -436,6 +436,7 @@ TESTS = \
 	table_properties_collector_test \
 	arena_test \
 	block_test \
+	suffix_index_perf \
 	block_suffix_index_test \
 	cache_test \
 	corruption_test \
@@ -1345,6 +1346,9 @@ table_test: table/table_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 block_test: table/block_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+suffix_index_perf: table/suffix_index_perf.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 block_suffix_index_test: table/block_suffix_index_test.o $(LIBOBJECTS) $(TESTHARNESS)

@@ -345,6 +345,7 @@ MAIN_SOURCES =                                                          \
   table/block_based_filter_block_test.cc                                \
   table/block_suffix_index_test.cc                                      \
   table/block_test.cc                                                   \
+  table/suffix_index_perf.cc                                                   \
   table/cleanable_test.cc                                               \
   table/cuckoo_table_builder_test.cc                                    \
   table/cuckoo_table_reader_test.cc                                     \
