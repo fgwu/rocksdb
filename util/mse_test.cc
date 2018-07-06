@@ -4,6 +4,7 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include <string>
+#include <cmath>
 
 #include "util/mse.h"
 #include "util/testharness.h"
@@ -39,6 +40,28 @@ TEST_F(MseTest, SimpleTest2) {
   ASSERT_EQ(b1, -0.5);
   ASSERT_EQ(corr_coef, -1);
 }
+
+
+TEST_F(MseTest, MseSliceTest) {
+  MseSlice mse_slice;
+  // the estimiated rank cannot be exactly the same.
+  // So we consider them equal if their difference is less that `err_limit`
+  double err_limit = 0.01;
+  mse_slice.Add(Slice("aaa"), 0.0);
+  mse_slice.Add(Slice("aab"), 1.0);
+  //                  "aac"   2
+  //                  "aad"   3
+  mse_slice.Add(Slice("aae"), 4.0);
+  mse_slice.Finish();
+
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaa")) - 0.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aab")) - 1.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aac")) - 2.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aad")) - 3.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aae")) - 4.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaf")) - 5.0), err_limit);
+}
+
 
 }  // namespace rocksdb
 

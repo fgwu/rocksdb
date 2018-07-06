@@ -3,6 +3,8 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include <cmath>
+#include <iostream>
+#include "rocksdb/slice.h"
 #include "util/mse.h"
 
 namespace rocksdb {
@@ -30,8 +32,22 @@ double Mse::Finish(double& b0, double& b1) {
   b1 = cov_ty / var_t;
   b0 = e_y - b1 * e_t;
 
+  // TODO(fwu), sqrt really needed here?
   double corr_coef = cov_ty / sqrt(var_t * var_y);
   return corr_coef;
+}
+
+void MseSlice::Add(Slice slice, double rank) {
+  mse_.Add(SliceToDouble(slice), (double) rank);
+}
+
+void MseSlice::Finish() {
+  corr_coef_ = mse_.Finish(b0_, b1_);
+}
+
+double MseSlice::Seek(Slice slice) {
+  assert(corr_coef_ <= 2); // index should be valid
+  return b0_ + b1_ * SliceToDouble(slice);
 }
 
 }  // namespace rocksdb
