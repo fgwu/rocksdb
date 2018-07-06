@@ -13,7 +13,31 @@ namespace rocksdb {
 class MseTest : public testing::Test {};
 
 TEST_F(MseTest, SimpleTest) {
-  ASSERT_TRUE(true);
+  Mse mse;
+  mse.Add(1,3);
+  mse.Add(2,5);
+  mse.Add(3,7);
+
+  double b0, b1, corr_coef;
+  corr_coef = mse.Finish(b0, b1);
+
+  ASSERT_EQ(b0, 1);
+  ASSERT_EQ(b1, 2);
+  ASSERT_EQ(corr_coef, 1);
+}
+
+TEST_F(MseTest, SimpleTest2) {
+  Mse mse;
+  mse.Add(3,3);
+  mse.Add(5,2);
+  mse.Add(7,1);
+
+  double b0, b1, corr_coef;
+  corr_coef = mse.Finish(b0, b1);
+
+  ASSERT_EQ(b0, 4.5);
+  ASSERT_EQ(b1, -0.5);
+  ASSERT_EQ(corr_coef, -1);
 }
 
 }  // namespace rocksdb
