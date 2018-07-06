@@ -143,6 +143,7 @@ LIB_SOURCES =                                                   \
   util/hash.cc                                                  \
   util/log_buffer.cc                                            \
   util/murmurhash.cc                                            \
+  util/mse.cc                                                   \
   util/random.cc                                                \
   util/rate_limiter.cc                                          \
   util/slice.cc                                                 \

@@ -497,6 +497,7 @@ TESTS = \
 	options_settable_test \
 	options_util_test \
 	event_logger_test \
+	mse_test \
 	timer_queue_test \
 	cuckoo_table_builder_test \
 	cuckoo_table_reader_test \
@@ -1447,6 +1448,9 @@ db_bench_tool_test: tools/db_bench_tool_test.o $(BENCHTOOLOBJECTS) $(TESTHARNESS
 	$(AM_LINK)
 
 event_logger_test: util/event_logger_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+mse_test: util/mse_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 timer_queue_test: util/timer_queue_test.o $(LIBOBJECTS) $(TESTHARNESS)

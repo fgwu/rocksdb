@@ -214,6 +214,7 @@ cpp_library(
         "util/hash.cc",
         "util/log_buffer.cc",
         "util/murmurhash.cc",
+        "util/mse.cc",
         "util/random.cc",
         "util/rate_limiter.cc",
         "util/slice.cc",
@@ -692,6 +693,11 @@ ROCKS_TESTS = [
     [
         "event_logger_test",
         "util/event_logger_test.cc",
+        "serial",
+    ],
+    [
+        "mse_test",
+        "util/mse_test.cc",
         "serial",
     ],
     [

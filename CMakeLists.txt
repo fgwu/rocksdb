@@ -597,6 +597,7 @@ set(SOURCES
         util/filter_policy.cc
         util/hash.cc
         util/log_buffer.cc
+        util/mse.cc
         util/murmurhash.cc
         util/random.cc
         util/rate_limiter.cc
@@ -940,6 +941,7 @@ if(WITH_TESTS)
         util/filelock_test.cc
         util/hash_test.cc
         util/heap_test.cc
+        util/mse_test.cc
         util/rate_limiter_test.cc
         util/slice_transform_test.cc
         util/timer_queue_test.cc
