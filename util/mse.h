@@ -68,8 +68,6 @@ class MseSlice {
   }
 
   static size_t CommonPrefixLen(Slice a, Slice b){
-    std::cout << "common prefix " << a.ToString() << " "
-              << b.ToString() << "\n";
     size_t i = 0;
     for (; i < a.size() && i < b.size(); i++) {
       if (a[i] != b[i])

@@ -43,6 +43,26 @@ TEST_F(MseTest, SimpleTest2) {
 
 
 TEST_F(MseTest, MseSliceTest) {
+  MseSlice mse_slice;
+  // the estimiated rank cannot be exactly the same.
+  // So we consider them equal if their difference is less that `err_limit`
+  double err_limit = 0.4;
+  mse_slice.Add(Slice("aa"), 0.0);
+  mse_slice.Add(Slice("ab"), 1.0);
+  //                  "ac"   2
+  //                  "ad"   3
+  mse_slice.Add(Slice("ae"), 4.0);
+  mse_slice.Finish();
+
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aa")) - 0.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("ab")) - 1.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("ac")) - 2.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("ad")) - 3.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("ae")) - 4.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("af")) - 5.0), err_limit);
+}
+
+TEST_F(MseTest, MseSlicePrefixTest) {
   MseSlice mse_slice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3);
   // the estimiated rank cannot be exactly the same.
   // So we consider them equal if their difference is less that `err_limit`
