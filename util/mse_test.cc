@@ -46,7 +46,7 @@ TEST_F(MseTest, MseSliceTest) {
   MseSlice mse_slice;
   // the estimiated rank cannot be exactly the same.
   // So we consider them equal if their difference is less that `err_limit`
-  double err_limit = 0.4;
+  double err_limit = 0.001;
   mse_slice.Add(Slice("aa"), 0.0);
   mse_slice.Add(Slice("ab"), 1.0);
   //                  "ac"   2
@@ -66,7 +66,7 @@ TEST_F(MseTest, MseSlicePrefixTest) {
   MseSlice mse_slice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3);
   // the estimiated rank cannot be exactly the same.
   // So we consider them equal if their difference is less that `err_limit`
-  double err_limit = 0.4;
+  double err_limit = 0.001;
   mse_slice.Add(Slice("aaaaaaaa"), 0.0);
   mse_slice.Add(Slice("aaaaaaab"), 1.0);
   //                  "aaaaaaac"   2
