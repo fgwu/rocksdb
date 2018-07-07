@@ -43,23 +43,23 @@ TEST_F(MseTest, SimpleTest2) {
 
 
 TEST_F(MseTest, MseSliceTest) {
-  MseSlice mse_slice;
+  MseSlice mse_slice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3);
   // the estimiated rank cannot be exactly the same.
   // So we consider them equal if their difference is less that `err_limit`
-  double err_limit = 0.01;
-  mse_slice.Add(Slice("aaa"), 0.0);
-  mse_slice.Add(Slice("aab"), 1.0);
-  //                  "aac"   2
-  //                  "aad"   3
-  mse_slice.Add(Slice("aae"), 4.0);
+  double err_limit = 0.4;
+  mse_slice.Add(Slice("aaaaaaaa"), 0.0);
+  mse_slice.Add(Slice("aaaaaaab"), 1.0);
+  //                  "aaaaaaac"   2
+  //                  "aaaaaaad"   3
+  mse_slice.Add(Slice("aaaaaaae"), 4.0);
   mse_slice.Finish();
 
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaa")) - 0.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aab")) - 1.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aac")) - 2.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aad")) - 3.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aae")) - 4.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaf")) - 5.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaaa")) - 0.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaab")) - 1.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaac")) - 2.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaad")) - 3.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaae")) - 4.0), err_limit);
+  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaaf")) - 5.0), err_limit);
 }
 
 

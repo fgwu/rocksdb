@@ -34,11 +34,17 @@ double Mse::Finish(double& b0, double& b1) {
 
   // TODO(fwu), sqrt really needed here?
   double corr_coef = cov_ty / sqrt(var_t * var_y);
+
   return corr_coef;
 }
 
 void MseSlice::Add(Slice slice, double rank) {
-  mse_.Add(SliceToDouble(slice), (double) rank);
+  Slice suffix = slice;
+  if (cnt_ != -1) { // prefix_len_ is set
+    suffix = UniqueSuffix(slice);
+  }
+
+  mse_.Add(SliceToDouble(suffix), (double) rank);
 }
 
 void MseSlice::Finish() {
@@ -47,7 +53,12 @@ void MseSlice::Finish() {
 
 double MseSlice::Seek(Slice slice) {
   assert(corr_coef_ <= 2); // index should be valid
-  return b0_ + b1_ * SliceToDouble(slice);
+  Slice suffix = slice;
+  if (cnt_ != -1) { // prefix_len_ is set
+    suffix = UniqueSuffix(slice);
+  }
+
+  return b0_ + b1_ * SliceToDouble(suffix);
 }
 
 }  // namespace rocksdb
