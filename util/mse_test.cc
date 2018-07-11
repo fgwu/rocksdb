@@ -71,7 +71,7 @@ TEST_F(MseTest, MseSlicePrefixTest) {
             new MseSlice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3));
       } else {
         mse_slice.reset(
-            new MseSlice(7, 8));
+            new MseSlice(7, 3));
       }
       // the estimiated rank cannot be exactly the same.
       // So we consider them equal if their difference is less that `err_limit`

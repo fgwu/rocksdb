@@ -48,6 +48,7 @@ void MseSlice::Add(Slice slice, double rank) {
 
 void MseSlice::Finish() {
   corr_coef_ = mse_.Finish(b0_, b1_);
+  std::cout << corr_coef_ << "\n";
 }
 
 double MseSlice::Seek(Slice slice) {
