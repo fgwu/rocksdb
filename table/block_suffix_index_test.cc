@@ -15,8 +15,8 @@
 namespace rocksdb {
 
 bool SearchForOffset(BlockSuffixIndex& index, Slice& key,
-                     uint32_t& restart_point) {
-  std::vector<uint32_t> bucket;
+                     uint16_t& restart_point) {
+  std::vector<uint16_t> bucket;
   index.Seek(key, bucket);
   for (auto& e : bucket) {
     if (e == restart_point) {
@@ -30,9 +30,9 @@ TEST(BlockTest, BlockSuffixTestSmall) {
   // bucket_num = 5, #keys = 2. 40% utilization
   BlockSuffixIndexBuilder builder(5);
 
-  for (uint32_t i = 0; i < 2; i++) {
+  for (uint16_t i = 0; i < 2; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -52,9 +52,9 @@ TEST(BlockTest, BlockSuffixTestSmall) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.SuffixHashMapStart());
-  for (uint32_t i = 0; i < 2; i++) {
+  for (uint16_t i = 0; i < 2; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
@@ -63,9 +63,9 @@ TEST(BlockTest, BlockSuffixTest) {
   // bucket_num = 200, #keys = 100. 50% utilization
   BlockSuffixIndexBuilder builder(200);
 
-  for (uint32_t i = 0; i < 100; i++) {
+  for (uint16_t i = 0; i < 100; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -85,9 +85,9 @@ TEST(BlockTest, BlockSuffixTest) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.SuffixHashMapStart());
-  for (uint32_t i = 0; i < 100; i++) {
+  for (uint16_t i = 0; i < 100; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
@@ -96,9 +96,9 @@ TEST(BlockTest, BlockSuffixTestCollision) {
   // bucket_num = 2. There will be intense hash collisions
   BlockSuffixIndexBuilder builder(2);
 
-  for (uint32_t i = 0; i < 100; i++) {
+  for (uint16_t i = 0; i < 100; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -118,22 +118,22 @@ TEST(BlockTest, BlockSuffixTestCollision) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.SuffixHashMapStart());
-  for (uint32_t i = 0; i < 100; i++) {
+  for (uint16_t i = 0; i < 100; i++) {
     Slice key("key" + std::to_string(i));
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
 
 TEST(BlockTest, BlockSuffixTestLarge) {
   BlockSuffixIndexBuilder builder(1000);
-  std::unordered_map<std::string, uint32_t> m;
+  std::unordered_map<std::string, uint16_t> m;
 
-  for (uint32_t i = 0; i < 10000000; i++) {
+  for (uint16_t i = 0; i < 16000; i++) {
     if (std::rand() % 2) continue;  // randomly leave half of the keys out
     std::string key_str = "key" + std::to_string(i);
     Slice key(key_str);
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     builder.Add(key, restart_point);
     m[key_str] = restart_point;
   }
@@ -154,10 +154,10 @@ TEST(BlockTest, BlockSuffixTestLarge) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.SuffixHashMapStart());
-  for (uint32_t i = 0; i < 100; i++) {
+  for (uint16_t i = 0; i < 100; i++) {
     std::string key_str = "key" + std::to_string(i);
     Slice key(key_str);
-    uint32_t restart_point = i;
+    uint16_t restart_point = i;
     if (m.count(key_str)) {
       ASSERT_TRUE(m[key_str] == restart_point);
       ASSERT_TRUE(SearchForOffset(index, key, restart_point));
