@@ -32,6 +32,8 @@ double Mse::Finish(double& b0, double& b1) {
   b1 = cov_ty / var_t;
   b0 = e_y - b1 * e_t;
 
+  dout << b1 << " " << b0 << " " << "\n";
+
   // TODO(fwu), sqrt really needed here?
   double corr_coef = cov_ty / sqrt(var_t * var_y);
 
@@ -39,11 +41,8 @@ double Mse::Finish(double& b0, double& b1) {
 }
 
 void MseSlice::Add(Slice slice, double rank) {
-  Slice suffix = slice;
-  if (cnt_ != -1) { // prefix_len_ is set
-    suffix = ExtractSuffix(slice);
-  }
-
+  Slice suffix = ExtractSuffix(slice);
+  dout << base_ << " " << prefix_len_ << "\n";
   mse_.Add(SliceToDouble(suffix), (double) rank);
 }
 
@@ -53,12 +52,20 @@ void MseSlice::Finish() {
 
 double MseSlice::Seek(Slice slice) {
   assert(corr_coef_ <= 2); // index should be valid
-  Slice suffix = slice;
-  if (cnt_ != -1) { // prefix_len_ is set
-    suffix = ExtractSuffix(slice);
-  }
+  Slice suffix = ExtractSuffix(slice);
 
+  dout << suffix.ToString() << " " << SliceToDouble(suffix) << "\n";
   return b0_ + b1_ * SliceToDouble(suffix);
+}
+
+double MseSlice::SliceToDouble(Slice slice) {
+  double t = 0;
+  double base = base_;
+  for (size_t i = 0; i < slice.size(); i++, base/=256) {
+    dout << "slice to double " << slice[i] << " " << t << "\n";
+    t += (double)slice[i] * base;
+  }
+  return t;
 }
 
 }  // namespace rocksdb

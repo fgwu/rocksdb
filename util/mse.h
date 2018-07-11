@@ -8,6 +8,11 @@
 #include <iostream>
 #include "rocksdb/slice.h"
 
+#define DBG false
+
+#define dout if (DBG)						\
+    std::cout << "["<< __FILE__ << ":" << __FUNCTION__ << "] "
+
 namespace rocksdb {
 
 class Mse {
@@ -46,6 +51,14 @@ class MseSlice {
     base_ = base;
   }
 
+  MseSlice(size_t prefix_len, long base):
+      b0_(0), b1_(0),
+      corr_coef_(10), // corr_coef should [-1, 1]. 10 means invalid
+      cnt_(-1), // -1 means first_, last_, and cnt_ is not set.
+      prefix_len_(prefix_len),
+      base_(base){
+  }
+
   void Add(Slice slice, double rank);
   void Finish();
   double Seek(Slice slice);
@@ -53,14 +66,7 @@ class MseSlice {
 
 
  private:
-  static double SliceToDouble(Slice slice) {
-    double t = 0;
-    double base = 1;
-    for (size_t i = 0; i < slice.size(); i++, base/=256) {
-      t += (double)slice[i] * base;
-    }
-    return t;
-  }
+  double SliceToDouble(Slice slice);
 
   Slice ExtractSuffix(Slice slice) {
     assert(prefix_len_ <= slice.size());

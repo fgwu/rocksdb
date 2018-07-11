@@ -63,23 +63,32 @@ TEST_F(MseTest, MseSliceTest) {
 }
 
 TEST_F(MseTest, MseSlicePrefixTest) {
-  MseSlice mse_slice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3);
-  // the estimiated rank cannot be exactly the same.
-  // So we consider them equal if their difference is less that `err_limit`
-  double err_limit = 0.001;
-  mse_slice.Add(Slice("aaaaaaaa"), 0.0);
-  mse_slice.Add(Slice("aaaaaaab"), 1.0);
-  //                  "aaaaaaac"   2
-  //                  "aaaaaaad"   3
-  mse_slice.Add(Slice("aaaaaaae"), 4.0);
-  mse_slice.Finish();
+    double err_limit = 0.001;
+    for (int i = 0; i < 2; i++) {
+      std::unique_ptr<MseSlice> mse_slice;
+      if (i == 0) {
+        mse_slice.reset(
+            new MseSlice(Slice("aaaaaaaa"), Slice("aaaaaaaf"), 3));
+      } else {
+        mse_slice.reset(
+            new MseSlice(7, 8));
+      }
+      // the estimiated rank cannot be exactly the same.
+      // So we consider them equal if their difference is less that `err_limit`
+      mse_slice->Add(Slice("aaaaaaaa"), 0.0);
+      mse_slice->Add(Slice("aaaaaaab"), 1.0);
+      //                  "aaaaaaac"   2
+      //                  "aaaaaaad"   3
+      mse_slice->Add(Slice("aaaaaaae"), 4.0);
+      mse_slice->Finish();
 
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaaa")) - 0.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaab")) - 1.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaac")) - 2.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaad")) - 3.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaae")) - 4.0), err_limit);
-  ASSERT_LE(abs(mse_slice.Seek(Slice("aaaaaaaf")) - 5.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaaa")) - 0.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaab")) - 1.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaac")) - 2.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaad")) - 3.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaae")) - 4.0), err_limit);
+      ASSERT_LE(abs(mse_slice->Seek(Slice("aaaaaaaf")) - 5.0), err_limit);
+    }
 }
 
 
