@@ -41,7 +41,7 @@ double Mse::Finish(double& b0, double& b1) {
 void MseSlice::Add(Slice slice, double rank) {
   Slice suffix = slice;
   if (cnt_ != -1) { // prefix_len_ is set
-    suffix = UniqueSuffix(slice);
+    suffix = ExtractSuffix(slice);
   }
 
   mse_.Add(SliceToDouble(suffix), (double) rank);
@@ -55,7 +55,7 @@ double MseSlice::Seek(Slice slice) {
   assert(corr_coef_ <= 2); // index should be valid
   Slice suffix = slice;
   if (cnt_ != -1) { // prefix_len_ is set
-    suffix = UniqueSuffix(slice);
+    suffix = ExtractSuffix(slice);
   }
 
   return b0_ + b1_ * SliceToDouble(suffix);

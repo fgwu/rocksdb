@@ -62,7 +62,7 @@ class MseSlice {
     return t;
   }
 
-  Slice UniqueSuffix(Slice slice) {
+  Slice ExtractSuffix(Slice slice) {
     assert(prefix_len_ <= slice.size());
     return Slice(slice.data() + prefix_len_, slice.size() - prefix_len_);
   }
