@@ -40,18 +40,18 @@ double Mse::Finish(double& b0, double& b1) {
   return corr_coef;
 }
 
-void MseSlice::Add(Slice slice, double rank) {
+void MseIndex::Add(Slice slice, double rank) {
   Slice suffix = ExtractSuffix(slice);
   dout << base_ << " " << prefix_len_ << "\n";
   mse_.Add(SliceToDouble(suffix), (double) rank);
 }
 
-void MseSlice::Finish() {
+void MseIndex::Finish() {
   corr_coef_ = mse_.Finish(b0_, b1_);
   std::cout << corr_coef_ << "\n";
 }
 
-double MseSlice::Seek(Slice slice) {
+double MseIndex::Seek(Slice slice) {
   assert(corr_coef_ <= 2); // index should be valid
   Slice suffix = ExtractSuffix(slice);
 
@@ -59,7 +59,7 @@ double MseSlice::Seek(Slice slice) {
   return b0_ + b1_ * SliceToDouble(suffix);
 }
 
-double MseSlice::SliceToDouble(Slice slice) {
+double MseIndex::SliceToDouble(Slice slice) {
   double t = 0;
   double base = base_;
   for (size_t i = 0; i < slice.size(); i++, base/=256) {

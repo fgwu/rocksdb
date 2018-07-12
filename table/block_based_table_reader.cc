@@ -46,7 +46,6 @@
 #include "monitoring/perf_context_imp.h"
 #include "util/coding.h"
 #include "util/file_reader_writer.h"
-#include "util/mse.h"
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 #include "util/sync_point.h"
@@ -2897,9 +2896,6 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
   uint64_t datablock_size_sum = 0;
 
   size_t block_id = 1;
-
-  size_t prefix_len = 0;
-  long cnt = 100;
   for (blockhandles_iter->SeekToFirst(); blockhandles_iter->Valid();
        block_id++, blockhandles_iter->Next()) {
     s = blockhandles_iter->status();
@@ -2932,11 +2928,6 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
       continue;
     }
 
-    // leave 2 extra bytes of margin when estimating the prefix_len
-    // of the next blk
-    MseSlice mse_slice(prefix_len >= 2 ? (prefix_len - 2) : 0, cnt);
-    Slice first, last;
-    cnt = 0;
     for (datablock_iter->SeekToFirst(); datablock_iter->Valid();
          datablock_iter->Next()) {
       s = datablock_iter->status();
@@ -2945,14 +2936,7 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
         break;
       }
       DumpKeyValue(datablock_iter->key(), datablock_iter->value(), out_file);
-      if (cnt == 0) {
-        first = datablock_iter->key();
-      }
-      last = datablock_iter->key();
-      mse_slice.Add(datablock_iter->key(), cnt++);
     }
-    mse_slice.Finish();
-    prefix_len = MseSlice::CommonPrefixLen(first, last);
     out_file->Append("\n");
   }
 

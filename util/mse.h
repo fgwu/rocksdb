@@ -30,14 +30,14 @@ class Mse {
   double ty_sum_;
 };
 
-class MseSlice {
+class MseIndex {
  public:
-  MseSlice(): b0_(0), b1_(0),
+  MseIndex(): b0_(0), b1_(0),
               corr_coef_(10),// corr_coef should [-1, 1]. 10 means invalid
               cnt_(-1), // -1 means first_, last_, and cnt_ is not set.
               prefix_len_(0), base_(1) {}
 
-  MseSlice(Slice first, Slice last, long cnt):
+  MseIndex(Slice first, Slice last, long cnt):
       b0_(0), b1_(0),
       corr_coef_(10), // corr_coef should [-1, 1]. 10 means invalid
       first_(first),
@@ -51,7 +51,7 @@ class MseSlice {
     base_ = base;
   }
 
-  MseSlice(size_t prefix_len, long cnt):
+  MseIndex(size_t prefix_len, long cnt):
       b0_(0), b1_(0),
       corr_coef_(10), // corr_coef should [-1, 1]. 10 means invalid
       cnt_(cnt),
