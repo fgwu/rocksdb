@@ -36,11 +36,12 @@ namespace rocksdb {
 
 class BlockSuffixIndexBuilder {
  public:
-  BlockSuffixIndexBuilder(uint16_t n) :
-      num_buckets_(n),
-      buckets_(n),
-      estimate_((n + 2) * sizeof(uint16_t) /* n buckets, 2 num at the end */){}
-  void Add(const Slice &suffix, const uint16_t &pos);
+  BlockSuffixIndexBuilder(uint16_t n)
+      : num_buckets_(n),
+        buckets_(n),
+        estimate_((n + 2) *
+                  sizeof(uint16_t) /* n buckets, 2 num at the end */) {}
+  void Add(const Slice& suffix, const uint16_t& pos);
   void Finish(std::string& buffer);
   void Reset();
   inline size_t EstimateSize() { return estimate_; }
@@ -75,18 +76,19 @@ class BlockSuffixIndex {
 class BlockSuffixIndexIterator {
  public:
   BlockSuffixIndexIterator(const char* start, const char* end,
-                           const uint16_t tag):
-      start_(start), end_(end), tag_(tag) {
+                           const uint16_t tag)
+      : start_(start), end_(end), tag_(tag) {
     current_ = start - 2 * sizeof(uint16_t);
     Next();
   }
   bool Valid();
   void Next();
   uint16_t Value();
+
  private:
   const char* start_; // [start_,  end_) defines the bucket range
   const char* end_;
-  const uint16_t tag_; // the fingerprint (2nd hash value) of the searching key
+  const uint16_t tag_;  // the fingerprint (2nd hash value) of the searching key
   const char* current_;
 };
 

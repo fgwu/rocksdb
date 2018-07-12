@@ -96,8 +96,8 @@ inline uint16_t DecodeFixed16(const char* ptr) {
     memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
     return result;
   } else {
-    return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0])))
-            | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8));
+    return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0]))) |
+            (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8));
   }
 }
 
@@ -185,7 +185,7 @@ inline void EncodeFixed64(char* buf, uint64_t value) {
 inline void PutFixed16(std::string* dst, uint16_t value) {
   if (port::kLittleEndian) {
     dst->append(const_cast<const char*>(reinterpret_cast<char*>(&value)),
-      sizeof(value));
+                sizeof(value));
   } else {
     char buf[sizeof(value)];
     EncodeFixed16(buf, value);

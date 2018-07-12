@@ -2,7 +2,6 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -25,13 +24,15 @@ void BlockSuffixIndexBuilder::Add(const Slice& key,
   uint16_t idx = SuffixToBucket(key, num_buckets_);
   /* push a TAG to avoid false postive */
   /* the TAG is the hash function value of another seed */
-  buckets_[idx].push_back((uint16_t)rocksdb::Hash(
-                              key.data(), key.size(), kSeed_tag));
+  uint16_t tag = rocksdb::Hash(key.data(), key.size(), kSeed_tag);
+  buckets_[idx].push_back(tag);
   buckets_[idx].push_back(restart_index);
   estimate_ += 2 * sizeof(uint16_t);
 }
 
 void BlockSuffixIndexBuilder::Finish(std::string& buffer) {
+  // Because we use uint16_t address, we only support block less than 64KB
+  assert(buffer.size() < (1 << 16));
   // offset is the byte offset within the buffer
   std::vector<uint16_t> bucket_offsets(num_buckets_, 0);
 
@@ -61,8 +62,8 @@ void BlockSuffixIndexBuilder::Finish(std::string& buffer) {
 
 void BlockSuffixIndexBuilder::Reset() {
 //  buckets_.clear();
-  std::fill(buckets_.begin(), buckets_.end(), std::vector<uint16_t>());
-  estimate_ = 0;
+std::fill(buckets_.begin(), buckets_.end(), std::vector<uint16_t>());
+estimate_ = 0;
 }
 
 BlockSuffixIndex::BlockSuffixIndex(Slice block_content) {
@@ -86,18 +87,17 @@ BlockSuffixIndex::BlockSuffixIndex(Slice block_content) {
 
 void BlockSuffixIndex::Seek(Slice& key, std::vector<uint16_t>& bucket) const {
   assert(bucket.size() == 0);
+
   uint16_t idx = SuffixToBucket(key, num_buckets_);
   uint16_t bucket_off = DecodeFixed16(bucket_table_ + idx * sizeof(uint16_t));
   const char* limit;
   if (idx < num_buckets_ - 1) {
     // limited by the start offset of the next bucket
-    limit = data_ +
-            DecodeFixed16(bucket_table_ + (idx + 1) * sizeof(uint16_t));
+    limit = data_ + DecodeFixed16(bucket_table_ + (idx + 1) * sizeof(uint16_t));
   } else {
     // limited by the location of the NUM_BUCK
     limit = data_ + (size_ - 2 * sizeof(uint16_t));
   }
-
   uint16_t tag = rocksdb::Hash(key.data(), key.size(), kSeed_tag);
   for (const char* p = data_ + bucket_off; p < limit;
        p += 2 * sizeof(uint16_t)) {
@@ -115,15 +115,12 @@ BlockSuffixIndexIterator* BlockSuffixIndex::NewIterator(
   const char* limit;
   if (idx < num_buckets_ - 1) {
     // limited by the start offset of the next bucket
-    limit = data_ +
-            DecodeFixed16(bucket_table_ + (idx + 1) * sizeof(uint16_t));
+    limit = data_ + DecodeFixed16(bucket_table_ + (idx + 1) * sizeof(uint16_t));
   } else {
     // limited by the location of the NUM_BUCK
     limit = data_ + (size_ - 2 * sizeof(uint16_t));
   }
-
-  uint16_t tag = rocksdb::Hash(key.data(), key.size(), kSeed_tag);
-
+  uint16_t tag = (uint16_t)rocksdb::Hash(key.data(), key.size(), kSeed_tag);
   return new BlockSuffixIndexIterator(data_ + bucket_off, limit, tag);
 }
 
@@ -135,14 +132,15 @@ void BlockSuffixIndexIterator::Next() {
   for (current_ += 2 * sizeof(uint16_t); current_ < end_;
        current_ += 2 * sizeof(uint16_t)) {
     // stop at a offset that match the tag, i.e. a possible match
-    if (DecodeFixed16(current_) == tag_) {
+    uint16_t tag_found = DecodeFixed16(current_);
+    if (tag_found == tag_) {
       break;
     }
   }
 }
 
 uint16_t BlockSuffixIndexIterator::Value() {
-  return DecodeFixed16(current_+ sizeof(uint16_t));
+  return DecodeFixed16(current_ + sizeof(uint16_t));
 }
 
 }  // namespace rocksdb

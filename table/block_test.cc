@@ -519,7 +519,7 @@ TEST_F(BlockTest, SuffixIndexTest) {
   BlockBuilder builder(16 /* block_restart_interval */,
                        true /* use_delta_encoding */,
                        use_suffix_index);
-  int num_records = 100000;
+  int num_records = 500;
 
   GenerateRandomKVs(&keys, &values, 0, num_records);
 
@@ -527,7 +527,8 @@ TEST_F(BlockTest, SuffixIndexTest) {
   // Later will Seeking for keys with a trailing "0" to test seeking
   // non-existent keys.
   for (int i = 0; i < num_records; i++) {
-    builder.Add(keys[i] + "1",
+    builder.Add(keys[i] + "1" /* ending by "1" marks existing key*/
+                    + "00000000" /* fake seq num */,
                 values[i]);
   }
 
@@ -554,7 +555,9 @@ TEST_F(BlockTest, SuffixIndexTest) {
 
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
-    Slice k(keys[index] + "1"); // existing keys
+    std::string key = keys[index] + "1" /* marks existing key */
+                      + "00000000" /* fake seq num */;
+    Slice k(key);  // existing keys
 
     // search in block for this key
     iter->Seek(k);
@@ -568,7 +571,22 @@ TEST_F(BlockTest, SuffixIndexTest) {
 
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
-    Slice k(keys[index] + "0"); // no keys ends by "0"
+    std::string key = keys[index] + "0" /* marks a non-existing key */
+                      + "00000000" /* fake seq num */;
+    Slice k(key);  // no keys ends by "0"
+
+    // search in block for this key
+    iter->Seek(k);
+    ASSERT_FALSE(iter->Valid());
+  }
+
+  // random seek existent keys but wrong seq number
+  for (int i = 0; i < num_records; i++) {
+    // find a random key in the lookaside array
+    int index = rnd.Uniform(num_records);
+    std::string key = keys[index] + "1" /* marks an existing key */
+                      + "55555555" /* fake seq num */;
+    Slice k(key);  // no keys has seq number "55555555"
 
     // search in block for this key
     iter->Seek(k);
