@@ -6,6 +6,7 @@
 #include <iostream>
 #include "rocksdb/slice.h"
 #include "util/mse.h"
+#include "util/coding.h"
 
 namespace rocksdb {
 
@@ -40,33 +41,117 @@ double Mse::Finish(double& b0, double& b1) {
   return corr_coef;
 }
 
+void Mse::Reset() {
+  cnt_ = 0;
+  t_sum_ = 0;
+  y_sum_ = 0;
+  t2_sum_ = 0;
+  y2_sum_ = 0;
+  ty_sum_ = 0;
+}
+
 void MseIndex::Add(Slice slice, double rank) {
+  if (actual_cnt_ == 0) {
+    // this is the first key of the block.
+    // TODO(fwu): can we avoid this memcpy?
+    first_key_.assign(slice.data(), slice.size());
+  }
+  actual_cnt_++;
+
   Slice suffix = ExtractSuffix(slice);
-  dout << base_ << " " << prefix_len_ << "\n";
+  dout << "base=" << base_ << " prefix_len=" << prefix_len_ << "\n";
   mse_.Add(SliceToDouble(suffix), (double) rank);
 }
 
 void MseIndex::Finish() {
   corr_coef_ = mse_.Finish(b0_, b1_);
-  std::cout << corr_coef_ << "\n";
 }
 
-double MseIndex::Seek(Slice slice) {
-  assert(corr_coef_ <= 2); // index should be valid
-  Slice suffix = ExtractSuffix(slice);
+void MseIndex::Finish(std::string& buffer, const Slice& last_key) {
+  actual_prefix_len_ = CommonPrefixLen(Slice(first_key_), last_key);
 
+  // if we successfully predict the prefix_len_
+  if (actual_prefix_len_ >= prefix_len_) {
+    Finish();
+  }
+
+  dout << "corr_coef=" << corr_coef_ << "\n";
+
+  assert(sizeof(double) == 8);
+  assert(sizeof(size_t) == 8);
+  dout << "b0=" << b0_ << " b1=" << b1_
+     << " prefix=" << prefix_len_ << " base=" << base_
+     << " corr_coef=" << corr_coef_ << "\n";
+  PutFixed64(&buffer, *(uint64_t*)(&b0_));
+  PutFixed64(&buffer, *(uint64_t*)(&b1_));
+  PutFixed64(&buffer, static_cast<uint64_t>(prefix_len_));
+  PutFixed64(&buffer, *(uint64_t*)(&base_));
+  PutFixed64(&buffer, *(uint64_t*)(&corr_coef_));
+}
+
+
+
+double MseIndex::Seek(Slice slice) {
+  Slice suffix = ExtractSuffix(slice);
   dout << suffix.ToString() << " " << SliceToDouble(suffix) << "\n";
+  dout << b0_ << " " << b1_ << " "
+       <<  b0_ + b1_ * SliceToDouble(suffix) << "\n";
   return b0_ + b1_ * SliceToDouble(suffix);
+}
+
+bool MseIndex::Seek(Slice slice, uint32_t* index) {
+  if (corr_coef_ > 5) {
+    return false;
+  }
+
+  double raw = Seek(slice);
+  // avoid undefined behavior when casting a negative double to uint32_t
+  if (raw < 0) {
+    raw = 0;
+  }
+
+  *index = static_cast<unsigned int>(round(raw));
+  return true;
 }
 
 double MseIndex::SliceToDouble(Slice slice) {
   double t = 0;
   double base = base_;
   for (size_t i = 0; i < slice.size(); i++, base/=256) {
-    dout << "slice to double " << slice[i] << " " << t << "\n";
     t += (double)slice[i] * base;
+//    dout << "slice to double [" << i << "]:" << slice[i] << " " << t << "\n";
   }
+
   return t;
+}
+
+// reset all the parameters for the next block
+// estimate the prefix_len_ and cnt_ for the next block
+// reset the actual_prefix_len_ and actual_cnt_ for next block.
+void MseIndex::Reset() {
+  mse_.Reset();
+  b0_ = 0;
+  b1_ = 0;
+  corr_coef_ = 10;
+
+  cnt_ = actual_cnt_;
+  // estimate the length of prefix of the next block.
+  // subtracting 2 to make a safe margin.
+  // If last prefix_len is less than 2, set it to 0
+  if (actual_prefix_len_ < 2) {
+    prefix_len_ = 0;
+  } else {
+    prefix_len_ = actual_prefix_len_ - 2;
+  }
+
+  actual_cnt_ = 0;
+  actual_prefix_len_ = 0; // doesnt' matter, will be set in Finish();
+
+  long base = 1;
+  for (; base < cnt_; base <<= 1){
+    ; // do nothing
+  }
+  base_ = base;
 }
 
 }  // namespace rocksdb

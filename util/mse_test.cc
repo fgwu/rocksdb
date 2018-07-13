@@ -43,7 +43,7 @@ TEST_F(MseTest, SimpleTest2) {
 
 
 TEST_F(MseTest, MseIndexTest) {
-  MseIndex mse_index;
+  MseIndex mse_index(1, 3);
   // the estimiated rank cannot be exactly the same.
   // So we consider them equal if their difference is less that `err_limit`
   double err_limit = 0.001;
@@ -89,6 +89,55 @@ TEST_F(MseTest, MseIndexPrefixTest) {
       ASSERT_LE(abs(mse_index->Seek(Slice("aaaaaaae")) - 4.0), err_limit);
       ASSERT_LE(abs(mse_index->Seek(Slice("aaaaaaaf")) - 5.0), err_limit);
     }
+}
+
+TEST_F(MseTest, MseIndexBuildAndRead) {
+    double err_limit = 1;
+    std::string block_content = "block content";
+    MseIndex mse_index_builder(6, 5);
+
+    mse_index_builder.Add(Slice("aaaaaaaa"), 0.0);
+    mse_index_builder.Add(Slice("aaaaaaab"), 1.0);
+    mse_index_builder.Add(Slice("aaaaaaac"), 2.0);
+    mse_index_builder.Add(Slice("aaaaaaad"), 3.0);
+    mse_index_builder.Add(Slice("aaaaaaae"), 4.0);
+
+    mse_index_builder.Finish(block_content, Slice("aaaaaaae"));
+
+    MseIndex mse_index_reader(block_content);
+    uint32_t index;
+    ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaaa"), &index));
+    ASSERT_LE(abs(index - 0.0), err_limit);
+    ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaab"), &index));
+    ASSERT_LE(abs(index - 1.0), err_limit);
+    ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaac"), &index));
+    ASSERT_LE(abs(index - 2.0), err_limit);
+    ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaad"), &index));
+    ASSERT_LE(abs(index - 3.0), err_limit);
+    ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaae"), &index));
+    ASSERT_LE(abs(index - 4.0), err_limit);
+
+    // here actual_prefix_len = 7, so the next estimated prefix_len = 5
+    mse_index_builder.Reset();
+
+
+    // we delibrately add a set of strings with prefix_len = 4.
+    mse_index_builder.Add(Slice("xxxxa"), 10.0);
+    mse_index_builder.Add(Slice("xxxxb"), 11.0);
+    mse_index_builder.Add(Slice("xxxxc"), 12.0);
+    mse_index_builder.Add(Slice("xxxxd"), 13.0);
+    mse_index_builder.Add(Slice("xxxxe"), 14.0);
+
+    std::string block_content2 = "block content2";
+    mse_index_builder.Finish(block_content2, Slice("xxxxe"));
+
+    MseIndex mse_index_reader2(block_content2);
+    // So the builder fails. Subsequent seeks should fail
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxa"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxb"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxc"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxd"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxe"), &index));
 }
 
 
