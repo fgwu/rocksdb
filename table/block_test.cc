@@ -504,7 +504,6 @@ TEST_F(BlockTest, ReadAmpBitmapPow2) {
   ASSERT_EQ(BlockReadAmpBitmap(100, 35, stats.get()).GetBytesPerBit(), 32);
 }
 
-// Suffix Index Test
 TEST_F(BlockTest, MseIndexTest) {
   Random rnd(1019);
   Options options = Options();
@@ -517,16 +516,17 @@ TEST_F(BlockTest, MseIndexTest) {
   BlockBuilder builder(16 /* block_restart_interval */,
                        true /* use_delta_encoding */,
                        BlockBasedTableOptions::kDataBlockMseIndex);
-  int num_records = 100000;
+  int num_records = 1000;
 
-  GenerateRandomKVs(&keys, &values, 0, num_records);
-
-  // Generate keys. Adding a trailing "1" to indicate existent keys.
-  // Later will Seeking for keys with a trailing "0" to test seeking
-  // non-existent keys.
   for (int i = 0; i < num_records; i++) {
-    builder.Add(keys[i] + "1",
-                values[i]);
+    // secondary key set to 0, so later keys with secondary key as 1
+    // is non-existent key.
+    keys.emplace_back(GenerateKey(i, 0, 0, nullptr));
+    values.emplace_back(RandomString(&rnd, 100));
+  }
+
+  for (int i = 0; i < num_records; i++) {
+    builder.Add(keys[i], values[i]);
   }
 
   // read serialized contents of the block
@@ -544,7 +544,7 @@ TEST_F(BlockTest, MseIndexTest) {
   for (int i = 0; i < num_records; i++) {
     // find a random key in the lookaside array
     int index = rnd.Uniform(num_records);
-    std::string k(keys[index] + "1"); // existing keys
+    std::string k(keys[index]);
 
     // search in block for this key
     iter->Seek(k);
@@ -554,11 +554,9 @@ TEST_F(BlockTest, MseIndexTest) {
   }
 
   // random seek non-existent keys
-  for (int i = 0; i < num_records; i++) {
-    std::cout << "nonexisting i = " << i << "   >";
-    // find a random key in the lookaside array
-    int index = rnd.Uniform(num_records);
-    std::string k(keys[index] + "0"); // no keys ends by "0"
+  for (int i = 0; i < num_records - 1; i++) {
+    // there is no key with the secondary key as 1
+    std::string k = GenerateKey(i, 1, 0, nullptr);
 
     // search in block for this key
     iter->Seek(k);

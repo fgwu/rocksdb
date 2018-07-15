@@ -126,8 +126,6 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
     if (mse_index_) {
       mse_index_->Add(key /* last key */,
                       restarts_.size() /* the rank of the restart interval */);
-      std::cout << "Add: key=" << key.ToString() << ", index="
-                << restarts_.size() << "\n";
     }
 
     restarts_.push_back(static_cast<uint32_t>(buffer_.size()));

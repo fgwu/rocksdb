@@ -154,12 +154,7 @@ void BlockIter::Seek(const Slice& target) {
     ok = PrefixSeek(target, &index);
   } else {
     if (mse_index_) {
-      std::cout << "Seek key=" << seek_key.ToString();
       ok = MseSeek(seek_key, &index); //TODO(fwu): which one?
-      if (ok)
-        std::cout << " index=" << index << "\n";
-      else
-        std::cout << "\n";
     }
 
     if (!ok) {
@@ -446,7 +441,6 @@ bool BlockIter::MseSeek(const Slice& target, uint32_t* index) {
   // objectice: index <= target, next > target
   int cmp;
   status = CompareBlockKey(*index, &cmp);
-  std::cout << "MseIndexSeek: init index=" << *index << "\n";
   if (!status) {
     return status;
   }
