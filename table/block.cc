@@ -153,7 +153,19 @@ void BlockIter::Seek(const Slice& target) {
   if (prefix_index_) {
     ok = PrefixSeek(target, &index);
   } else {
-    ok = BinarySeek(seek_key, 0, num_restarts_ - 1, &index);
+    if (mse_index_) {
+      std::cout << "Seek key=" << seek_key.ToString();
+      ok = MseSeek(seek_key, &index); //TODO(fwu): which one?
+      if (ok)
+        std::cout << " index=" << index << "\n";
+      else
+        std::cout << "\n";
+    }
+
+    if (!ok) {
+    // either mse_index_ is not set or it fails, fall back to BinarySeek
+      ok = BinarySeek(seek_key, 0, num_restarts_ - 1, &index);
+    }
   }
 
   if (!ok) {
@@ -394,6 +406,83 @@ bool BlockIter::BinaryBlockIndexSeek(const Slice& target, uint32_t* block_ids,
   }
 }
 
+// Linear search in restart array to find the first restart point that
+// is either the last restart point with a key less than target,
+// which means the key of next restart point is larger than target, or
+// the first restart point with a key = target
+// if error occurred, return false; otherwise return true.
+bool BlockIter::MseSeek(const Slice& target, uint32_t* index) {
+  assert(mse_index_);
+
+  auto CompareBlockKey = [&](uint32_t idx, int* cmp_result /* output*/){
+    assert (idx < num_restarts_);
+
+    uint32_t region_offset = GetRestartPoint(idx);
+    uint32_t shared, non_shared, value_length;
+    const char* key_ptr = DecodeEntry(data_ + region_offset, data_ + restarts_,
+                                      &shared, &non_shared, &value_length);
+    if (key_ptr == nullptr || (shared != 0)) {
+      CorruptionError();
+      return false;
+    }
+    Slice current_key(key_ptr, non_shared);
+    *cmp_result = Compare(current_key, target);
+    return true;
+  };
+
+  bool status = mse_index_->Seek(target, index);
+  if (!status) {
+    // Seek fails. Maybe because too much error.
+    return status;
+  }
+
+  // sanity check. *index is unsigned so it's always >= 0, so we only check
+  // upper bound.
+  if (*index >= num_restarts_) {
+    *index = num_restarts_ - 1;
+  }
+
+
+  // objectice: index <= target, next > target
+  int cmp;
+  status = CompareBlockKey(*index, &cmp);
+  std::cout << "MseIndexSeek: init index=" << *index << "\n";
+  if (!status) {
+    return status;
+  }
+
+  if (cmp <= 0) {
+    // shift right until condition is satisfied
+    if (*index >= num_restarts_ - 1) {
+      return true;
+    }
+    for (status = CompareBlockKey(*index + 1, &cmp);
+         status && cmp <= 0;
+         status = CompareBlockKey(*index + 1, &cmp)) {
+      (*index)++;
+      if (*index >= num_restarts_ - 1) {
+        break;
+      }
+    }
+    return status;
+  } else {
+    // shift left until condition is satisfied
+    if (*index == 0) {
+      return true;
+    }
+
+    for (status = CompareBlockKey(*index, &cmp);
+         status && cmp > 0;
+         status = CompareBlockKey(*index, &cmp)) {
+      (*index)--;
+      if (*index <= 0) {
+        break;
+      }
+    }
+    return status;
+  }
+}
+
 bool BlockIter::PrefixSeek(const Slice& target, uint32_t* index) {
   assert(prefix_index_);
   Slice seek_key = target;
@@ -411,11 +500,6 @@ bool BlockIter::PrefixSeek(const Slice& target, uint32_t* index) {
   }
 }
 
-uint32_t Block::NumRestarts() const {
-  assert(size_ >= 2*sizeof(uint32_t));
-  return DecodeFixed32(data_ + size_ - sizeof(uint32_t));
-}
-
 Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
              size_t read_amp_bytes_per_bit, Statistics* statistics)
     : contents_(std::move(contents)),
@@ -429,16 +513,51 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
   } else {
     // Should only decode restart points for uncompressed blocks
     if (compression_type() == kNoCompression) {
-      num_restarts_ = NumRestarts();
-      restart_offset_ =
-          static_cast<uint32_t>(size_) - (1 + num_restarts_) * sizeof(uint32_t);
-      if (restart_offset_ > size_ - sizeof(uint32_t)) {
-        // The size is too small for NumRestarts() and therefore
-        // restart_offset_ wrapped around.
-        size_ = 0;
+      // For a data block is less than 64KB, the number of restart intervals
+      // will be no greater than a uint16_t can present.
+      // So we borrow the higher 16 bit of the num_restart_ (uint32_t) to
+      // record data block index type. This is compatible with the default
+      // binary seek search with no index.
+      assert(size_ >= 2*sizeof(uint32_t));
+      uint32_t block_footer = DecodeFixed32(data_ + size_ - sizeof(uint32_t));
+      num_restarts_ = block_footer & 0x0000FFFF;
+      switch (block_footer >> 16) {
+        case BlockBasedTableOptions::kDataBlockBinarySearch:
+          restart_offset_ = static_cast<uint32_t>(size_)
+            - (1 + num_restarts_) * sizeof(uint32_t);
+          if (restart_offset_ > size_ - sizeof(uint32_t)) {
+            // The size is too small for NumRestarts() and therefore
+            // restart_offset_ wrapped around.
+            size_ = 0;
+          }
+          break;
+        case BlockBasedTableOptions::kDataBlockHashIndex:
+          size_ = 0; // TODO(fwu): no implemented yet.
+          break;
+        case BlockBasedTableOptions::kDataBlockMseIndex:
+          if (size_ <= sizeof(uint32_t) + 5 * sizeof(uint64_t)) {
+            size_ = 0;
+            break;
+          }
+          restart_offset_ = static_cast<uint32_t>(size_)
+            - (1 + num_restarts_) * sizeof(uint32_t) - 5 * sizeof(uint64_t);
+          if (restart_offset_ > size_ - sizeof(uint32_t)) {
+            // The size is too small for NumRestarts() and therefore
+            // restart_offset_ wrapped around.
+            size_ = 0;
+            break;
+          }
+          // chop off the restart number (uint32_t)
+          mse_index_.reset(
+              new MseIndex(Slice(contents.data.data(),
+                                 contents.data.size() - sizeof(uint32_t))));
+          break;
+        default:
+          size_ = 0; // Error marker
       }
     }
   }
+
   if (read_amp_bytes_per_bit != 0 && statistics && size_ != 0) {
     read_amp_bitmap_.reset(new BlockReadAmpBitmap(
         restart_offset_, read_amp_bytes_per_bit, statistics));
@@ -467,7 +586,8 @@ BlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
         total_order_seek ? nullptr : prefix_index_.get();
     ret_iter->Initialize(cmp, ucmp, data_, restart_offset_, num_restarts_,
                          prefix_index_ptr, global_seqno_,
-                         read_amp_bitmap_.get(), key_includes_seq, cachable());
+                         read_amp_bitmap_.get(), key_includes_seq, cachable(),
+                         mse_index_.get() /* TODO(fwu): flag, if use */);
 
     if (read_amp_bitmap_) {
       if (read_amp_bitmap_->GetStatistics() != stats) {

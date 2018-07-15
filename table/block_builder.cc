@@ -38,18 +38,37 @@
 #include "rocksdb/comparator.h"
 #include "db/dbformat.h"
 #include "util/coding.h"
+#include "util/mse.h"
 
 namespace rocksdb {
 
-BlockBuilder::BlockBuilder(int block_restart_interval, bool use_delta_encoding)
+BlockBuilder::BlockBuilder(int block_restart_interval,
+                           bool use_delta_encoding,
+                           BlockBasedTableOptions::DataBlockIndexType index_type)
     : block_restart_interval_(block_restart_interval),
       use_delta_encoding_(use_delta_encoding),
       restarts_(),
       counter_(0),
       finished_(false) {
+  switch(index_type) {
+    case BlockBasedTableOptions::kDataBlockBinarySearch:
+      break;
+    case BlockBasedTableOptions::kDataBlockHashIndex:
+      assert(0); // TODO(fwu); not implemented yet
+      break;
+    case BlockBasedTableOptions::kDataBlockMseIndex:
+      mse_index_.reset(new MseIndex(0, 100));
+      break;
+    default:
+      assert(0);
+  }
   assert(block_restart_interval_ >= 1);
   restarts_.push_back(0);       // First restart point is at offset 0
   estimate_ = sizeof(uint32_t) + sizeof(uint32_t);
+  if (mse_index_) {
+    estimate_ += sizeof(uint64_t) * 4 /* b0 b1 corr_coef base */
+      + sizeof(uint64_t) /* prefix_len */;
+  }
 }
 
 void BlockBuilder::Reset() {
@@ -60,6 +79,9 @@ void BlockBuilder::Reset() {
   counter_ = 0;
   finished_ = false;
   last_key_.clear();
+  if (mse_index_) {
+    mse_index_->Reset();
+  }
 }
 
 size_t BlockBuilder::EstimateSizeAfterKV(const Slice& key, const Slice& value)
@@ -82,7 +104,15 @@ Slice BlockBuilder::Finish() {
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
-  PutFixed32(&buffer_, static_cast<uint32_t>(restarts_.size()));
+  uint32_t block_footer = static_cast<uint32_t>(restarts_.size());
+  if (mse_index_) {
+    mse_index_->Finish(buffer_, Slice(last_key_));
+    // embed the data block index type to the higher 16 bit of the num_restarts
+    block_footer |= (uint32_t)BlockBasedTableOptions::kDataBlockMseIndex << 16;
+  }
+
+  PutFixed32(&buffer_, block_footer);
+
   finished_ = true;
   return Slice(buffer_);
 }
@@ -93,6 +123,13 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   size_t shared = 0;  // number of bytes shared with prev key
   if (counter_ >= block_restart_interval_) {
     // Restart compression
+    if (mse_index_) {
+      mse_index_->Add(key /* last key */,
+                      restarts_.size() /* the rank of the restart interval */);
+      std::cout << "Add: key=" << key.ToString() << ", index="
+                << restarts_.size() << "\n";
+    }
+
     restarts_.push_back(static_cast<uint32_t>(buffer_.size()));
     estimate_ += sizeof(uint32_t);
     counter_ = 0;

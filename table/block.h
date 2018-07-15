@@ -27,6 +27,7 @@
 #include "rocksdb/statistics.h"
 #include "table/block_prefix_index.h"
 #include "table/internal_iterator.h"
+#include "util/mse.h"
 #include "util/random.h"
 #include "util/sync_point.h"
 #include "format.h"
@@ -197,6 +198,8 @@ class Block {
   // the encoded value (kDisableGlobalSequenceNumber means disabled)
   const SequenceNumber global_seqno_;
 
+  std::unique_ptr<MseIndex> mse_index_;
+
   // No copying allowed
   Block(const Block&) = delete;
   void operator=(const Block&) = delete;
@@ -222,7 +225,8 @@ class BlockIter final : public InternalIterator {
         global_seqno_(kDisableGlobalSequenceNumber),
         read_amp_bitmap_(nullptr),
         last_bitmap_offset_(0),
-        block_contents_pinned_(false) {}
+        block_contents_pinned_(false),
+        mse_index_(nullptr){}
 
   BlockIter(const Comparator* comparator, const Comparator* user_comparator,
             const char* data, uint32_t restarts, uint32_t num_restarts,
@@ -232,7 +236,7 @@ class BlockIter final : public InternalIterator {
       : BlockIter() {
     Initialize(comparator, user_comparator, data, restarts, num_restarts,
                prefix_index, global_seqno, read_amp_bitmap, key_includes_seq,
-               block_contents_pinned);
+               block_contents_pinned, nullptr /*mse_index*/);
   }
 
   void Initialize(const Comparator* comparator,
@@ -240,7 +244,7 @@ class BlockIter final : public InternalIterator {
                   uint32_t restarts, uint32_t num_restarts,
                   BlockPrefixIndex* prefix_index, SequenceNumber global_seqno,
                   BlockReadAmpBitmap* read_amp_bitmap, bool key_includes_seq,
-                  bool block_contents_pinned) {
+                  bool block_contents_pinned, MseIndex* mse_index) {
     assert(data_ == nullptr);           // Ensure it is called only once
     assert(num_restarts > 0);           // Ensure the param is valid
 
@@ -257,6 +261,7 @@ class BlockIter final : public InternalIterator {
     last_bitmap_offset_ = current_ + 1;
     key_includes_seq_ = key_includes_seq;
     block_contents_pinned_ = block_contents_pinned;
+    mse_index_ = mse_index;
   }
 
   // Makes Valid() return false, status() return `s`, and Seek()/Prev()/etc do
@@ -354,7 +359,6 @@ class BlockIter final : public InternalIterator {
   // Key is in InternalKey format
   bool key_includes_seq_;
   SequenceNumber global_seqno_;
-
  public:
   // read-amp bitmap
   BlockReadAmpBitmap* read_amp_bitmap_;
@@ -438,7 +442,10 @@ class BlockIter final : public InternalIterator {
                             uint32_t* index);
 
   bool PrefixSeek(const Slice& target, uint32_t* index);
+  bool MseSeek(const Slice& target, uint32_t* index);
 
+ private:
+  MseIndex* mse_index_;
 };
 
 }  // namespace rocksdb
