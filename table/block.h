@@ -153,6 +153,7 @@ class Block {
   // The additional memory space taken by the block data.
   size_t usable_size() const { return contents_.usable_size(); }
   uint32_t NumRestarts() const;
+  uint32_t IndexType() const;
   CompressionType compression_type() const {
     return contents_.compression_type;
   }
@@ -197,7 +198,6 @@ class Block {
   // All keys in the block will have seqno = global_seqno_, regardless of
   // the encoded value (kDisableGlobalSequenceNumber means disabled)
   const SequenceNumber global_seqno_;
-
   std::unique_ptr<MseIndex> mse_index_;
 
   // No copying allowed

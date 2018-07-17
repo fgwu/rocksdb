@@ -494,6 +494,18 @@ bool BlockIter::PrefixSeek(const Slice& target, uint32_t* index) {
   }
 }
 
+uint32_t Block::NumRestarts() const {
+  assert(size_ >= 2*sizeof(uint32_t));
+  uint32_t block_footer = DecodeFixed32(data_ + size_ - sizeof(uint32_t));
+  return block_footer & 0x0000FFFF;
+}
+
+uint32_t Block::IndexType() const {
+  assert(size_ >= 2*sizeof(uint32_t));
+  uint32_t block_footer = DecodeFixed32(data_ + size_ - sizeof(uint32_t));
+  return (char)(block_footer >> 16);
+}
+
 Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
              size_t read_amp_bytes_per_bit, Statistics* statistics)
     : contents_(std::move(contents)),
@@ -512,10 +524,8 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
       // So we borrow the higher 16 bit of the num_restart_ (uint32_t) to
       // record data block index type. This is compatible with the default
       // binary seek search with no index.
-      assert(size_ >= 2*sizeof(uint32_t));
-      uint32_t block_footer = DecodeFixed32(data_ + size_ - sizeof(uint32_t));
-      num_restarts_ = block_footer & 0x0000FFFF;
-      switch (block_footer >> 16) {
+      num_restarts_ = NumRestarts();
+      switch (IndexType()) {
         case BlockBasedTableOptions::kDataBlockBinarySearch:
           restart_offset_ = static_cast<uint32_t>(size_)
             - (1 + num_restarts_) * sizeof(uint32_t);
