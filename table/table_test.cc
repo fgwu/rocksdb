@@ -3521,7 +3521,7 @@ TEST_P(BlockBasedTableTest, MseIndexTest) {
   BlockBasedTableOptions table_options = GetBlockBasedTableOptions();
   table_options.filter_policy.reset(NewBloomFilterPolicy(10));
   table_options.data_block_index_type =
-    BlockBasedTableOptions::kDataBlockMseIndex;
+      BlockBasedTableOptions::kDataBlockMseIndex;
 
   Options options;
   options.comparator = BytewiseComparator();
@@ -3548,13 +3548,11 @@ TEST_P(BlockBasedTableTest, MseIndexTest) {
   c.Finish(options, ioptions, moptions, table_options, internal_comparator,
            &keys, &kvmap);
 
-
   auto reader = c.GetTableReader();
 
-
   std::unique_ptr<InternalIterator> seek_iter;
-  seek_iter.reset(reader->NewIterator(ReadOptions(),
-                                      moptions.prefix_extractor.get()));
+  seek_iter.reset(
+      reader->NewIterator(ReadOptions(), moptions.prefix_extractor.get()));
 
   for (int i = 0; i < 2; ++i) {
     ReadOptions ro;
@@ -3567,14 +3565,14 @@ TEST_P(BlockBasedTableTest, MseIndexTest) {
 
     // Search for existent keys
     for (auto& kv : kvmap) {
-      { // Search using Seek()
+      {  // Search using Seek()
         seek_iter->Seek(kv.first);
         ASSERT_OK(seek_iter->status());
         ASSERT_TRUE(seek_iter->Valid());
         ASSERT_EQ(seek_iter->key(), kv.first);
         ASSERT_EQ(seek_iter->value(), kv.second);
       }
-      { // Search using Get()
+      {  // Search using Get()
         PinnableSlice value;
         std::string user_key = ExtractUserKey(kv.first).ToString();
         GetContext get_context(options.comparator, nullptr, nullptr, nullptr,
@@ -3591,18 +3589,18 @@ TEST_P(BlockBasedTableTest, MseIndexTest) {
     // Search for non-existent keys
     for (auto& kv : kvmap) {
       std::string user_key = ExtractUserKey(kv.first).ToString();
-      user_key.back() = '0'; // make it non-existent key
+      user_key.back() = '0';  // make it non-existent key
       InternalKey internal_key(user_key, 0, kTypeValue);
       std::string encoded_key = internal_key.Encode().ToString();
-      { // Search using Seek()
+      {  // Search using Seek()
         seek_iter->Seek(encoded_key);
         ASSERT_OK(seek_iter->status());
-        if (seek_iter->Valid()){
+        if (seek_iter->Valid()) {
           ASSERT_TRUE(BytewiseComparator()->Compare(
                           user_key, ExtractUserKey(seek_iter->key())) < 0);
         }
       }
-      { // Search using Get()
+      {  // Search using Get()
         PinnableSlice value;
         GetContext get_context(options.comparator, nullptr, nullptr, nullptr,
                                GetContext::kNotFound, user_key, &value, nullptr,

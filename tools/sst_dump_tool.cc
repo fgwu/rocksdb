@@ -584,6 +584,71 @@ int SSTDumpTool::Run(int argc, char** argv) {
       return 0;
     }
 
+    if (command == "perf") {
+      ReadOptions read_options;
+      Options opts;
+      const ImmutableCFOptions imoptions(opts);
+      const ColumnFamilyOptions cfo(opts);
+      const MutableCFOptions moptions(cfo);
+      rocksdb::InternalKeyComparator ikc(opts.comparator);
+      std::vector<std::unique_ptr<IntTblPropCollectorFactory>>
+          block_based_table_factories;
+
+      fprintf(stdout, "Block Size: %" ROCKSDB_PRIszt "\n", block_size);
+
+      for (auto& compr : kCompressions) {
+        if (CompressionTypeSupported(compr.first)) {
+          CompressionOptions compress_opt;
+          std::string column_family_name;
+          int unknown_level = -1;
+          TableBuilderOptions tb_opts(
+              imoptions, moptions, ikc, &block_based_table_factories,
+              compr.first, compress_opt, nullptr /* compression_dict */,
+              false /* skip_filters */, column_family_name, unknown_level);
+          //          uint64_t file_size =
+          //          reader.CalculateCompressedTableSize(tb_opts, 16384);
+
+          unique_ptr<WritableFile> out_file;
+          unique_ptr<Env> mem_env(NewMemEnv(Env::Default()));
+          mem_env->NewWritableFile(testFileName, &out_file, reader.soptions_);
+          unique_ptr<WritableFileWriter> dest_writer;
+          dest_writer.reset(
+              new WritableFileWriter(std::move(out_file), reader.soptions_));
+          BlockBasedTableOptions table_options;
+          table_options.block_size = 16384;
+          BlockBasedTableFactory block_based_tf(table_options);
+          unique_ptr<TableBuilder> table_builder;
+          table_builder.reset(block_based_tf.NewTableBuilder(
+              tb_opts,
+              TablePropertiesCollectorFactory::Context::kUnknownColumnFamily,
+              dest_writer.get()));
+          unique_ptr<InternalIterator> iter(reader.table_reader_->NewIterator(
+              ReadOptions(), reader.moptions_.prefix_extractor.get()));
+          for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
+            if (!iter->status().ok()) {
+              fputs(iter->status().ToString().c_str(), stderr);
+              exit(1);
+            }
+            table_builder->Add(iter->key(), iter->value());
+          }
+          Status s = table_builder->Finish();
+          if (!s.ok()) {
+            fputs(s.ToString().c_str(), stderr);
+            exit(1);
+          }
+          uint64_t file_size = table_builder->FileSize();
+          mem_env->DeleteFile(testFileName);
+          //          return size;
+
+          fprintf(stdout, "Compression: %s", compr.second);
+          fprintf(stdout, " Size: %" PRIu64 "\n", file_size);
+        } else {
+          fprintf(stdout, "Unsupported compression type: %s.\n", compr.second);
+        }
+      }
+      return 0;
+    }
+
     if (command == "raw") {
       std::string out_filename = filename.substr(0, filename.length() - 4);
       out_filename.append("_dump.txt");
