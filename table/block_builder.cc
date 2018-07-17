@@ -105,6 +105,10 @@ Slice BlockBuilder::Finish() {
     PutFixed32(&buffer_, restarts_[i]);
   }
   uint32_t block_footer = static_cast<uint32_t>(restarts_.size());
+
+  // new restart point borrows the higher 16bit as data block index type
+  // so the maxinum number of restart point is the max if uint16_t (0xFFFF)
+  assert(restarts_.size() <= 0xFFFF);
   if (mse_index_) {
     mse_index_->Finish(buffer_, Slice(last_key_));
     // embed the data block index type to the higher 16 bit of the num_restarts

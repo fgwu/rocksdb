@@ -168,6 +168,7 @@ void CheckBlockContents(BlockContents contents, const int max_key,
 
   // Seek existent keys
   for (size_t i = 0; i < keys.size(); i++) {
+//    std::cout << "i = " << i << "\n";
     regular_iter->Seek(keys[i]);
     ASSERT_OK(regular_iter->status());
     ASSERT_TRUE(regular_iter->Valid());
@@ -203,7 +204,7 @@ TEST_F(BlockTest, SimpleIndexHash) {
 }
 
 TEST_F(BlockTest, IndexHashWithSharedPrefix) {
-  const int kMaxKey = 100000;
+  const int kMaxKey = 25000;
   // for each prefix, there will be 5 keys starts with it.
   const int kPrefixGroup = 5;
   std::vector<std::string> keys;

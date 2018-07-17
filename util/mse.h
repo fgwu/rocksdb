@@ -73,15 +73,25 @@ class MseIndex {
            4 * sizeof(uint64_t) + sizeof(uint64_t));
     const char* data = block_content.data();
     size_t size = static_cast<uint32_t>(block_content.size());
-    uint64_t num_buf = DecodeFixed64(data + size - 5 * sizeof(uint64_t));
-    b0_ = *(double*)(&num_buf);
-    num_buf = DecodeFixed64(data + size - 4 * sizeof(uint64_t));
-    b1_ = *(double*)(&num_buf);
-    prefix_len_ = DecodeFixed64(data + size - 3 * sizeof(uint64_t));
-    num_buf = DecodeFixed64(data + size - 2 * sizeof(uint64_t));
-    base_ = *(double*)(&num_buf);
-    num_buf = DecodeFixed64(data + size - sizeof(uint64_t));
-    corr_coef_ = *(double*)(&num_buf);
+
+    memcpy(&b0_, data + size - 4 * sizeof(double) - sizeof(uint64_t),
+           sizeof(b0_));
+    memcpy(&b1_, data + size - 3 * sizeof(double) - sizeof(uint64_t),
+           sizeof(b1_));
+    prefix_len_ = DecodeFixed64(data + size - 2 * sizeof(uint64_t) -
+                                sizeof(uint64_t));
+    memcpy(&base_, data + size - 2 * sizeof(double), sizeof(base_));
+    memcpy(&corr_coef_, data + size - sizeof(double), sizeof(corr_coef_));
+
+    // uint64_t num_buf = DecodeFixed64(data + size - 5 * sizeof(uint64_t));
+    // b0_ = *reinterpret_cast<(double*)(&num_buf);
+    // num_buf = DecodeFixed64(data + size - 4 * sizeof(uint64_t));
+    // b1_ = *(double*)(&num_buf);
+    // prefix_len_ = DecodeFixed64(data + size - 3 * sizeof(uint64_t));
+    // num_buf = DecodeFixed64(data + size - 2 * sizeof(uint64_t));
+    // base_ = *(double*)(&num_buf);
+    // num_buf = DecodeFixed64(data + size - sizeof(uint64_t));
+    // corr_coef_ = *(double*)(&num_buf);
     dout << "b0=" << b0_ << " b1=" << b1_
          << " prefix=" << prefix_len_ << " base=" << base_
          << " corr_coef=" << corr_coef_ << "\n";

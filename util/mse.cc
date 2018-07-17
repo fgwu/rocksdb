@@ -82,11 +82,20 @@ void MseIndex::Finish(std::string& buffer, const Slice& last_key) {
   dout << "b0=" << b0_ << " b1=" << b1_
      << " prefix=" << prefix_len_ << " base=" << base_
      << " corr_coef=" << corr_coef_ << "\n";
-  PutFixed64(&buffer, *(uint64_t*)(&b0_));
-  PutFixed64(&buffer, *(uint64_t*)(&b1_));
+  buffer.append(const_cast<const char*>(reinterpret_cast<char*>(&b0_)),
+                sizeof(double));
+  buffer.append(const_cast<const char*>(reinterpret_cast<char*>(&b1_)),
+                sizeof(double));
   PutFixed64(&buffer, static_cast<uint64_t>(prefix_len_));
-  PutFixed64(&buffer, *(uint64_t*)(&base_));
-  PutFixed64(&buffer, *(uint64_t*)(&corr_coef_));
+  buffer.append(const_cast<const char*>(reinterpret_cast<char*>(&base_)),
+                sizeof(double));
+  buffer.append(const_cast<const char*>(reinterpret_cast<char*>(&corr_coef_)),
+                sizeof(double));
+  // PutFixed64(&buffer, *(uint64_t*)(&b0_));
+  // PutFixed64(&buffer, *(uint64_t*)(&b1_));
+  // PutFixed64(&buffer, static_cast<uint64_t>(prefix_len_));
+  // PutFixed64(&buffer, *(uint64_t*)(&base_));
+  // PutFixed64(&buffer, *(uint64_t*)(&corr_coef_));
 }
 
 
