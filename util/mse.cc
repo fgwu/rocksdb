@@ -102,14 +102,27 @@ void MseIndex::Finish(std::string& buffer, const Slice& last_key) {
 
 double MseIndex::Seek(Slice slice) {
   Slice suffix = ExtractSuffix(slice);
-  dout << suffix.ToString() << " " << SliceToDouble(suffix) << "\n";
-  dout << b0_ << " " << b1_ << " "
-       <<  b0_ + b1_ * SliceToDouble(suffix) << "\n";
-  return b0_ + b1_ * SliceToDouble(suffix);
+  // dout << "Seek() b0=" << b0_ << " b1=" << b1_
+  //    << " prefix=" << prefix_len_ << " base=" << base_
+  //    << " corr_coef=" << corr_coef_ << "\n";
+  // dout << "suffix<" <<suffix.ToString()
+  //      << "> double=" << SliceToDouble(suffix);
+  // dout << " rank="
+  //      <<  b0_ + b1_ * SliceToDouble(suffix) << "\n";
+
+  dout << "Seek()" << " corr_coef=" << corr_coef_
+       << " rank=" <<  b0_ + b1_ * SliceToDouble(suffix) << "  ";
+return b0_ + b1_ * SliceToDouble(suffix);
 }
 
 bool MseIndex::Seek(Slice slice, uint32_t* index) {
   if (corr_coef_ > 5) {
+    return false;
+  }
+
+  // if the corr_coef_ is too low, the error rate is to high.
+  // we would rather fall back to binary seek
+  if (corr_coef_ < 0.8) {
     return false;
   }
 
@@ -145,12 +158,12 @@ void MseIndex::Reset() {
 
   cnt_ = actual_cnt_;
   // estimate the length of prefix of the next block.
-  // subtracting 2 to make a safe margin.
-  // If last prefix_len is less than 2, set it to 0
-  if (actual_prefix_len_ < 2) {
+  // subtracting 1 to make a safe margin.
+  // If last prefix_len is less than 1, set it to 0
+  if (actual_prefix_len_ < 1) {
     prefix_len_ = 0;
   } else {
-    prefix_len_ = actual_prefix_len_ - 2;
+    prefix_len_ = actual_prefix_len_ - 1;
   }
 
   actual_cnt_ = 0;
