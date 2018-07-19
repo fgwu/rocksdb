@@ -155,7 +155,7 @@ void BlockIter::Seek(const Slice& target) {
   } else {
     if (mse_index_) {
       ok = MseSeek(seek_key, &index); //TODO(fwu): which one?
-      std::cout << "index=" << index << "\n";
+//      std::cout << "index=" << index << "\n";
     }
 
     if (!ok) {

@@ -17,6 +17,8 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <cstdlib>
+#include <sys/time.h>
 
 #include "db/memtable.h"
 #include "db/write_batch_internal.h"
@@ -596,7 +598,8 @@ int SSTDumpTool::Run(int argc, char** argv) {
 
       fprintf(stdout, "Block Size: %" ROCKSDB_PRIszt "\n", block_size);
 
-      auto compr = CompressionType::kSnappyCompression;
+      // auto compr = CompressionType::kSnappyCompression;
+      auto compr = CompressionType::kNoCompression;
       if (CompressionTypeSupported(compr)) {
         CompressionOptions compress_opt;
         std::string column_family_name;
@@ -619,6 +622,7 @@ int SSTDumpTool::Run(int argc, char** argv) {
         table_options.block_size = 16384;
         table_options.data_block_index_type =
           BlockBasedTableOptions::kDataBlockMseIndex;
+        table_options.block_restart_interval = 1;
         BlockBasedTableFactory block_based_tf(table_options);
         unique_ptr<TableBuilder> table_builder;
         table_builder.reset(block_based_tf.NewTableBuilder(
@@ -638,12 +642,12 @@ int SSTDumpTool::Run(int argc, char** argv) {
           values.push_back(iter->value().ToString());
         }
 
-        for (size_t j = 0; j < keys.size(); j++) {
-          iter->Seek(keys[j]);
-          assert(iter->status().ok());
-          assert(iter->Valid());
-          assert(iter->value().ToString().compare(values[j]) == 0);
-        }
+        // for (size_t j = 0; j < keys.size(); j++) {
+        //   iter->Seek(keys[j]);
+        //   assert(iter->status().ok());
+        //   assert(iter->Valid());
+        //   assert(iter->value().ToString().compare(values[j]) == 0);
+        // }
 
         Status s = table_builder->Finish();
         if (!s.ok()) {
@@ -668,13 +672,26 @@ int SSTDumpTool::Run(int argc, char** argv) {
             test_reader.table_reader_->NewIterator(
                 ReadOptions(), reader.moptions_.prefix_extractor.get()));
 
-        for (size_t j = 0; j < keys.size(); j++) {
+        srand(2018);
+
+        struct timeval tp;
+        gettimeofday(&tp, NULL);
+        long int start = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+
+        for (int ii = 0; ii < 10000000; ii++) {
+//          for (size_t j = 0; j < keys.size(); j++) {
+          int j = rand() % keys.size();
           test_iter->Seek(keys[j]);
-          assert(test_iter->status().ok());
-          assert(test_iter->Valid());
-          assert(test_iter->value().ToString().compare(values[j]) == 0);
+          // assert(test_iter->status().ok());
+          // assert(test_iter->Valid());
+          // assert(test_iter->value().ToString().compare(values[j]) == 0);
+//          }
         }
 
+        gettimeofday(&tp, NULL);
+        long int end = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+
+        fprintf(stdout, "time: %ld ms\n", end - start);
 //        default_env->DeleteFile(testFileName);
         fprintf(stdout, " Size: %" PRIu64 "\n", file_size);
       }

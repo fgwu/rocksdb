@@ -122,7 +122,7 @@ bool MseIndex::Seek(Slice slice, uint32_t* index) {
 
   // if the corr_coef_ is too low, the error rate is to high.
   // we would rather fall back to binary seek
-  if (corr_coef_ < 0.8) {
+  if (corr_coef_ < 0.5) {
     return false;
   }
 
