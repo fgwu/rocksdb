@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace rocksdb {
 
@@ -77,8 +78,7 @@ class BlockSuffixIndexIterator {
  public:
   BlockSuffixIndexIterator(const char* start, const char* end,
                            const uint16_t tag)
-      : start_(start), end_(end), tag_(tag) {
-    current_ = start - 2 * sizeof(uint16_t);
+      : start_(start), end_(end), tag_(tag), current_(start), valid_(false) {
     Next();
   }
   bool Valid();
@@ -90,6 +90,8 @@ class BlockSuffixIndexIterator {
   const char* end_;
   const uint16_t tag_;  // the fingerprint (2nd hash value) of the searching key
   const char* current_;
+  bool valid_;
+  uint16_t value_;
 };
 
 }  // namespace rocksdb

@@ -92,7 +92,7 @@ extern char* EncodeVarint64(char* dst, uint64_t value);
 inline uint16_t DecodeFixed16(const char* ptr) {
   if (port::kLittleEndian) {
     // Load the raw bytes
-    uint32_t result;
+    uint16_t result;
     memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
     return result;
   } else {

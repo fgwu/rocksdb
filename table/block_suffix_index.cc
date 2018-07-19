@@ -42,10 +42,24 @@ void BlockSuffixIndexBuilder::Finish(std::string& buffer) {
   for (uint16_t i = 0; i < num_buckets_; i++) {
     // remember the start offset of the buckets in bucket_offsets
     bucket_offsets[i] = static_cast<uint16_t>(buffer.size());
-    for (uint16_t elem : buckets_[i]) {
-      // the elem is alternative "TAG" and "offset"
-      PutFixed16(&buffer, elem);
+    for (size_t j = 0; j + 1 < buckets_[i].size(); j += 2) {
+      // std::cout << "put " << buckets_[i][j] << " "
+      //           << buckets_[i][j + 1] << "\n";
+//      const char* last = buffer.data() + buffer.size();
+      PutFixed16(&buffer, buckets_[i][j]); // TAG
+      // we reuse the PutVarint32 to put our uint16_t.
+      PutVarint32(&buffer, static_cast<uint32_t>(buckets_[i][j + 1])); // offset
+//      const char* limit = buffer.data() + buffer.size();
+
+      // std::cout << "get " << DecodeFixed16(last) << " ";
+      // uint32_t actual = 0;
+      // last = GetVarint32Ptr(last + sizeof(uint16_t), limit, &actual);
+      // std::cout << actual << "\n";
     }
+    // for (uint16_t elem : buckets_[i]) {
+    //   // the elem is alternative "TAG" and "offset"
+    //   PutFixed16(&buffer, elem);
+    // }
   }
 
   // write the bucket_offsets
@@ -99,11 +113,15 @@ void BlockSuffixIndex::Seek(Slice& key, std::vector<uint16_t>& bucket) const {
     limit = data_ + (size_ - 2 * sizeof(uint16_t));
   }
   uint16_t tag = rocksdb::Hash(key.data(), key.size(), kSeed_tag);
-  for (const char* p = data_ + bucket_off; p < limit;
-       p += 2 * sizeof(uint16_t)) {
+  const char* p = data_ + bucket_off;
+  while (p < limit) {
     if (DecodeFixed16(p) == tag) {
       // only if the tag matches the string do we return the restart_index
-      bucket.push_back(DecodeFixed16(p + sizeof(uint16_t)));
+      uint32_t actual = 0;
+      p = GetVarint32Ptr(p + sizeof(uint16_t), limit, &actual);
+      assert(p);
+      assert(actual < (1 << sizeof(uint16_t)));
+      bucket.push_back(static_cast<uint16_t>(actual));
     }
   }
 }
@@ -125,22 +143,32 @@ BlockSuffixIndexIterator* BlockSuffixIndex::NewIterator(
 }
 
 bool BlockSuffixIndexIterator::Valid() {
-  return current_ < end_;
+  // when current_ is pointing to end_ it may still be valid if the last
+  return valid_;
 }
 
 void BlockSuffixIndexIterator::Next() {
-  for (current_ += 2 * sizeof(uint16_t); current_ < end_;
-       current_ += 2 * sizeof(uint16_t)) {
-    // stop at a offset that match the tag, i.e. a possible match
+  if (current_ >= end_) { // if we have already search to the end_
+    valid_ = false;
+    return;
+  }
+
+  while (current_ < end_) {
+    uint32_t result = 0;
     uint16_t tag_found = DecodeFixed16(current_);
+    current_ = GetVarint32Ptr(current_ + sizeof(uint16_t), end_, &result);
+    value_ = static_cast<uint16_t>(result);
     if (tag_found == tag_) {
+      valid_ = true;
       break;
+    } else {
+      valid_ = false;
     }
   }
 }
 
 uint16_t BlockSuffixIndexIterator::Value() {
-  return DecodeFixed16(current_ + sizeof(uint16_t));
+  return value_;
 }
 
 }  // namespace rocksdb
