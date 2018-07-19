@@ -9,7 +9,7 @@
 #include "rocksdb/slice.h"
 #include "util/coding.h"
 
-#define DBG false
+#define DBG true
 
 #define dout if (DBG)						\
     std::cout << "["<< __FILE__ << ":" << __FUNCTION__ << "] "
