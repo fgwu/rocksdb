@@ -1058,6 +1058,7 @@ static enum RepFactory StringToRepFactory(const char* ctype) {
 static enum RepFactory FLAGS_rep_factory;
 DEFINE_string(memtablerep, "skip_list", "");
 DEFINE_int64(hash_bucket_count, 1024 * 1024, "hash bucket count");
+DEFINE_int64(block_hash_num_buckets, 400, "data block hash bucket count");
 DEFINE_bool(use_plain_table, false, "if use plain table "
             "instead of block-based table format");
 DEFINE_bool(use_cuckoo_table, false, "if use cuckoo table format");
@@ -3176,6 +3177,8 @@ void VerifyDBFromDB(std::string& truth_db_name) {
       if (FLAGS_block_uses_suffix_index) {
         block_based_options.block_format_type =
           BlockBasedTableOptions::kSuffixHashBlockType;
+        block_based_options.block_hash_num_buckets =
+          FLAGS_block_hash_num_buckets;
       } else {
         block_based_options.block_format_type =
           BlockBasedTableOptions::kBinarySearchBlockType;
