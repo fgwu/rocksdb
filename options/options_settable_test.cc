@@ -143,6 +143,7 @@ TEST_F(OptionsSettableTest, BlockBasedTableOptionsAllFieldsSettable) {
       "pin_top_level_index_and_filter=1;"
       "index_type=kHashSearch;"
       "block_format_type=kSuffixHashBlockType;"
+      "block_hash_num_buckets=400;"
       "checksum=kxxHash;hash_index_allow_collision=1;no_block_cache=1;"
       "block_cache=1M;block_cache_compressed=1k;block_size=1024;"
       "block_size_deviation=8;block_restart_interval=4; "
