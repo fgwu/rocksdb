@@ -43,7 +43,8 @@ namespace rocksdb {
 
 BlockBuilder::BlockBuilder(
     int block_restart_interval, bool use_delta_encoding,
-    BlockBasedTableOptions::DataBlockIndexType index_type)
+    BlockBasedTableOptions::DataBlockIndexType index_type,
+    int64_t block_hash_num_buckets)
     : block_restart_interval_(block_restart_interval),
       use_delta_encoding_(use_delta_encoding),
       restarts_(),
@@ -53,9 +54,8 @@ BlockBuilder::BlockBuilder(
     case BlockBasedTableOptions::kDataBlockBinarySearch:
       break;
     case BlockBasedTableOptions::kDataBlockHashSearch:
-      // TODO(fwu) dynamic num_buckets. Now it's hard coded as 500.
       data_block_hash_index_builder_.reset(
-          new DataBlockHashIndexBuilder(500 /*num_buckets */));
+          new DataBlockHashIndexBuilder(block_hash_num_buckets));
       break;
     default:
       assert(0);

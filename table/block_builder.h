@@ -25,7 +25,8 @@ class BlockBuilder {
   explicit BlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
                         BlockBasedTableOptions::DataBlockIndexType index_type =
-                            BlockBasedTableOptions::kDataBlockBinarySearch);
+                        BlockBasedTableOptions::kDataBlockBinarySearch,
+                        int64_t block_hash_num_buckets = 400);
 
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
