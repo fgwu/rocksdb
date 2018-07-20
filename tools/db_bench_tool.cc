@@ -1087,6 +1087,7 @@ static enum RepFactory StringToRepFactory(const char* ctype) {
 static enum RepFactory FLAGS_rep_factory;
 DEFINE_string(memtablerep, "skip_list", "");
 DEFINE_int64(hash_bucket_count, 1024 * 1024, "hash bucket count");
+DEFINE_int64(block_hash_num_buckets, 400, "data block hash bucket count");
 DEFINE_bool(use_plain_table, false, "if use plain table "
             "instead of block-based table format");
 DEFINE_bool(use_cuckoo_table, false, "if use cuckoo table format");
@@ -2091,7 +2092,8 @@ class Benchmark {
         fprintf(stdout, "DataBlockIndexType: binary\n");
         break;
       case rocksdb::BlockBasedTableOptions::kDataBlockHashSearch:
-        fprintf(stdout, "DataBlockIndexType: hash\n");
+        fprintf(stdout, "DataBlockIndexType: hash num_buckets=%ld\n",
+               FLAGS_block_hash_num_buckets);
         break;
     }
 
@@ -3219,6 +3221,7 @@ void VerifyDBFromDB(std::string& truth_db_name) {
       } else {
         block_based_options.index_type = BlockBasedTableOptions::kBinarySearch;
       }
+
       if (FLAGS_partition_index_and_filters || FLAGS_partition_index) {
         if (FLAGS_use_hash_search) {
           fprintf(stderr,
@@ -3260,6 +3263,8 @@ void VerifyDBFromDB(std::string& truth_db_name) {
       block_based_options.block_align = FLAGS_block_align;
       block_based_options.data_block_index_type =
         FLAGS_data_block_index_type_e;
+      block_based_options.block_hash_num_buckets =
+        FLAGS_block_hash_num_buckets;
       if (FLAGS_read_cache_path != "") {
 #ifndef ROCKSDB_LITE
         Status rc_status;
