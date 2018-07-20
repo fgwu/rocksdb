@@ -23,7 +23,8 @@ class BlockBuilder {
 
   explicit BlockBuilder(int block_restart_interval,
                         bool use_delta_encoding = true,
-                        bool use_suffix_index = false);
+                        bool use_suffix_index = false,
+                        int64_t block_hash_num_buckets = 400);
 
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();

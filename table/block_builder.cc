@@ -43,7 +43,7 @@
 namespace rocksdb {
 
 BlockBuilder::BlockBuilder(int block_restart_interval, bool use_delta_encoding,
-                           bool use_suffix_index)
+                           bool use_suffix_index, int64_t block_hash_num_buckets)
     : block_restart_interval_(block_restart_interval),
       use_delta_encoding_(use_delta_encoding),
       restarts_(),
@@ -51,7 +51,7 @@ BlockBuilder::BlockBuilder(int block_restart_interval, bool use_delta_encoding,
       finished_(false),
       suffix_index_builder_(
           use_suffix_index ?
-          new BlockSuffixIndexBuilder(500 /* num_bucket */) :
+          new BlockSuffixIndexBuilder(block_hash_num_buckets) :
           nullptr){ // TODO(fwu) adjustable bucket_num
   assert(block_restart_interval_ >= 1);
   restarts_.push_back(0);       // First restart point is at offset 0
