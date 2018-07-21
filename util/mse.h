@@ -8,7 +8,7 @@
 #include <iostream>
 #include "rocksdb/slice.h"
 
-#define DBG false
+#define DBG true
 
 #define dout if (DBG)						\
     std::cout << "["<< __FILE__ << ":" << __FUNCTION__ << "] "
@@ -61,7 +61,7 @@ class MseSlice {
       ; // do nothing
     }
     base_ = base;
-    std::cout << "cnstr: prefix_len_=" << prefix_len_ << " cnt_=" << cnt_ << " ";
+//    std::cout << "cnstr: prefix_len_=" << prefix_len_ << " cnt_=" << cnt_ << " ";
   }
 
   void Add(Slice slice, double rank);

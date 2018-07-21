@@ -50,6 +50,7 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 #include "util/sync_point.h"
+#include "rocksdb/utilities/ldb_cmd.h"
 
 namespace rocksdb {
 
@@ -2934,8 +2935,8 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
 
     // leave 2 extra bytes of margin when estimating the prefix_len
     // of the next blk
-    MseSlice mse_slice(prefix_len >= 2 ? (prefix_len - 2) : 0, cnt);
-    Slice first, last;
+    MseSlice mse_slice(prefix_len >= 1 ? (prefix_len - 1) : 0, cnt);
+    std::string first, last;
     cnt = 0;
     for (datablock_iter->SeekToFirst(); datablock_iter->Valid();
          datablock_iter->Next()) {
@@ -2945,12 +2946,16 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
         break;
       }
       DumpKeyValue(datablock_iter->key(), datablock_iter->value(), out_file);
+      // std::cout << rocksdb::LDBCommand::StringToHex(
+      //     datablock_iter->key().ToString()) << "\n";
       if (cnt == 0) {
-        first = datablock_iter->key();
+        first = datablock_iter->key().ToString();
       }
-      last = datablock_iter->key();
+      last = datablock_iter->key().ToString();
+      std::cout << block_id << " ";
       mse_slice.Add(datablock_iter->key(), cnt++);
     }
+    std::cout << block_id << " ";
     mse_slice.Finish();
     prefix_len = MseSlice::CommonPrefixLen(first, last);
     out_file->Append("\n");
