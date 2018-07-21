@@ -140,7 +140,9 @@ double MseIndex::SliceToDouble(Slice slice) {
   double t = 0;
   double base = base_;
   for (size_t i = 0; i < slice.size(); i++, base/=256) {
-    t += (double)slice[i] * base;
+    t += base * static_cast<double>(
+        *reinterpret_cast<const uint8_t*>(slice.data() + i));
+//    t += (double)slice[i] * base;
 //    dout << "slice to double [" << i << "]:" << slice[i] << " " << t << "\n";
   }
 
