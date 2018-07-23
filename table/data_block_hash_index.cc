@@ -42,9 +42,19 @@ void DataBlockHashIndexBuilder::Finish(std::string& buffer) {
   for (uint16_t i = 0; i < num_buckets_; i++) {
     // remember the start offset of the buckets in bucket_offsets
     bucket_offsets[i] = static_cast<uint16_t>(buffer.size());
-    for (uint16_t elem : buckets_[i]) {
-      // the elem is alternative "TAG" and "offset"
-      PutFixed16(&buffer, elem);
+    for (size_t j = 0; j + 1 < buckets_[i].size(); j += 2) {
+      std::cout << "put " << buckets_[i][j] << " "
+                << buckets_[i][j + 1] << "\n";
+      const char* last = buffer.data() + buffer.size();
+      PutFixed16(&buffer, buckets_[i][j]); // TAG
+      // we reuse the PutVarint32 to put our uint16_t.
+      PutVarint32(&buffer, static_cast<uint32_t>(buckets_[i][j + 1])); // offset
+      const char* limit = buffer.data() + buffer.size();
+
+      std::cout << "get " << DecodeFixed16(last) << " ";
+      uint32_t actual = 0;
+      last = GetVarint32Ptr(last + sizeof(uint16_t), limit, &actual);
+      std::cout << actual << "\n";
     }
   }
 
@@ -64,9 +74,8 @@ void DataBlockHashIndexBuilder::Finish(std::string& buffer) {
 }
 
 void DataBlockHashIndexBuilder::Reset() {
-//  buckets_.clear();
-std::fill(buckets_.begin(), buckets_.end(), std::vector<uint16_t>());
-estimate_ = 0;
+  std::fill(buckets_.begin(), buckets_.end(), std::vector<uint16_t>());
+  estimate_ = 0;
 }
 
 DataBlockHashIndex::DataBlockHashIndex(Slice block_content) {
@@ -120,7 +129,12 @@ void DataBlockHashIndexIterator::Next() {
 }
 
 uint16_t DataBlockHashIndexIterator::Value() {
-  return DecodeFixed16(current_ + sizeof(uint16_t));
+  uint32_t result = 0;
+  current_ = GetVarint32Ptr(current_ + sizeof(uint16_t), limit, &result);
+  assert(current_);
+  assert(result < (1 << sizeof(uint16_t)));
+  bucket.push_back(static_cast<uint16_t>(result));
+  return result;
 }
 
 }  // namespace rocksdb
