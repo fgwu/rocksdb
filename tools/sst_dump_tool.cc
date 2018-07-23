@@ -553,9 +553,9 @@ int SSTDumpTool::Run(int argc, char** argv) {
     dir = false;
   }
 
-  fprintf(stdout, "from [%s] to [%s]\n",
-      rocksdb::Slice(from_key).ToString(true).c_str(),
-      rocksdb::Slice(to_key).ToString(true).c_str());
+  // fprintf(stdout, "from [%s] to [%s]\n",
+  //     rocksdb::Slice(from_key).ToString(true).c_str(),
+  //     rocksdb::Slice(to_key).ToString(true).c_str());
 
   uint64_t total_read = 0;
   for (size_t i = 0; i < filenames.size(); i++) {
@@ -585,8 +585,9 @@ int SSTDumpTool::Run(int argc, char** argv) {
     }
 
     if (command == "raw") {
-      std::string out_filename = filename.substr(0, filename.length() - 4);
-      out_filename.append("_dump.txt");
+//      std::string out_filename = filename.substr(0, filename.length() - 4);
+//      out_filename.append("_dump.txt");
+      std::string out_filename = "/dev/null";
 
       st = reader.DumpTable(out_filename);
       if (!st.ok()) {

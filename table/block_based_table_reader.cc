@@ -2952,10 +2952,11 @@ Status BlockBasedTable::DumpDataBlocks(WritableFile* out_file) {
         first = datablock_iter->key().ToString();
       }
       last = datablock_iter->key().ToString();
-      std::cout << block_id << " ";
+//      std::cout << block_id << " ";
       mse_slice.Add(datablock_iter->key(), cnt++);
     }
-    std::cout << block_id << " ";
+//    std::cout << block_id << " ";
+    printf("%6ld ", block_id);
     mse_slice.Finish();
     prefix_len = MseSlice::CommonPrefixLen(first, last);
     out_file->Append("\n");

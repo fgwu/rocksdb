@@ -10,7 +10,8 @@
 namespace rocksdb {
 
 void Mse::Add(double t, double y) {
-  std::cout << t << " " << y << "\n";
+//  printf("%.10lf %.0lf\n", t, y);
+//  std::cout << t << " " << y << "\n";
   cnt_++;
   t_sum_ += t;
   y_sum_ += y;
@@ -50,8 +51,11 @@ void MseSlice::Add(Slice slice, double rank) {
 
 void MseSlice::Finish() {
   corr_coef_ = mse_.Finish(b0_, b1_);
-  std::cout << "corr b0 b1 " << corr_coef_ << " "
-            << b0_ << " " << b1_ << "\n";
+  // std::cout << "corr b0 b1 " << corr_coef_ << " "
+  //           << b0_ << " " << b1_ << "\n";
+  printf("%10.8lf\n", corr_coef_);
+  // std::cout << "corr b0 b1 " << corr_coef_ << " "
+  //           << b0_ << " " << b1_ << "\n";
 }
 
 double MseSlice::Seek(Slice slice) {
