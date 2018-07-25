@@ -34,6 +34,42 @@
 
 namespace rocksdb {
 
+enum TimerType {
+  kSeekStart,
+  kSeekEnd,
+  kMseSeekStart,
+  kMseSeekEnd,
+  kBinaryStart,
+  kBinaryEnd,
+  kStart,
+  kEnd,
+  kTableSeekStart,
+  kTableSeekEnd,
+  kInitDataBlockStart,
+  kInitDataBlockEnd
+};
+
+extern std::vector<std::pair<TimerType, long long>> nano_vec;
+extern int nano_idx;
+extern std::chrono::time_point<std::chrono::high_resolution_clock> nano_clock;
+
+#define TIMER_START do {                                        \
+    nano_clock = std::chrono::high_resolution_clock::now();     \
+    nano_vec[nano_idx++] = std::make_pair(kStart, 0);         \
+  } while(0)
+
+#define TIMER_LAP(type) do{                                            \
+    auto old_nano_clock = nano_clock;                                   \
+    nano_clock = std::chrono::high_resolution_clock::now();             \
+    auto elapsed = nano_clock - old_nano_clock;                         \
+    long long nanos =                                                   \
+      std::chrono::duration_cast<std::chrono::nanoseconds>(             \
+      elapsed).count();                                                 \
+    nano_vec[nano_idx++] = std::make_pair(type, nanos);                 \
+      } while(0)
+
+extern std::map<TimerType, std::string> nano_timer_map;
+
 struct BlockContents;
 class Comparator;
 class BlockIter;

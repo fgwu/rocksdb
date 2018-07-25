@@ -45,6 +45,26 @@
 
 namespace rocksdb {
 
+std::vector<std::pair<TimerType, long long>> nano_vec(100000);
+int nano_idx = 0;
+std::chrono::time_point<std::chrono::high_resolution_clock> nano_clock;
+
+std::map<TimerType, std::string> nano_timer_map = {
+  {kSeekStart, "kSeekA"},
+  {kSeekEnd, "kSeekB"},
+  {kMseSeekStart, "kMseSeekA"},
+  {kMseSeekEnd, "kMseSeekB"},
+  {kBinaryStart, "kBinaryA"},
+  {kBinaryEnd, "kBinaryB"},
+  {kStart, "kA"},
+  {kEnd, "kB"},
+  {kTableSeekStart, "kTableSeekA"},
+  {kTableSeekEnd, "kTableSeekB"},
+  {kInitDataBlockStart, "kInitDataBlockA"},
+  {kInitDataBlockEnd, "kInitDataBlockB"}
+};
+
+
 SstFileReader::SstFileReader(const std::string& file_path, bool verify_checksum,
                              bool output_hex)
     : file_name_(file_path),
@@ -63,7 +83,7 @@ extern const uint64_t kLegacyBlockBasedTableMagicNumber;
 extern const uint64_t kPlainTableMagicNumber;
 extern const uint64_t kLegacyPlainTableMagicNumber;
 
-const char* testFileName = "test_file_name";
+const char* testFileName = "/dev/shm/test_file_name";
 
 static const std::vector<std::pair<CompressionType, const char*>>
     kCompressions = {
@@ -586,7 +606,8 @@ int SSTDumpTool::Run(int argc, char** argv) {
       return 0;
     }
 
-    if (command == "perf") {
+
+    auto RunPerf = [&](bool use_mse){
       ReadOptions read_options;
       Options opts;
       const ImmutableCFOptions imoptions(opts);
@@ -620,9 +641,11 @@ int SSTDumpTool::Run(int argc, char** argv) {
             new WritableFileWriter(std::move(out_file), reader.soptions_));
         BlockBasedTableOptions table_options;
         table_options.block_size = 16384;
-        table_options.data_block_index_type =
-          BlockBasedTableOptions::kDataBlockMseIndex;
-        table_options.block_restart_interval = 1;
+        if (use_mse) {
+          table_options.data_block_index_type =
+            BlockBasedTableOptions::kDataBlockMseIndex;
+        }
+        table_options.block_restart_interval = 16;
         BlockBasedTableFactory block_based_tf(table_options);
         unique_ptr<TableBuilder> table_builder;
         table_builder.reset(block_based_tf.NewTableBuilder(
@@ -665,7 +688,7 @@ int SSTDumpTool::Run(int argc, char** argv) {
         if (!test_reader.getStatus().ok()) {
           fprintf(stderr, "%s: %s\n", filename.c_str(),
                   test_reader.getStatus().ToString().c_str());
-          continue;
+          return 1; // error marker
         }
 
         unique_ptr<InternalIterator> test_iter(
@@ -675,27 +698,60 @@ int SSTDumpTool::Run(int argc, char** argv) {
         srand(2018);
 
         struct timeval tp;
+        int num_ops = 100;
+        std::vector<long long> vec(100, 0);
         gettimeofday(&tp, NULL);
-        long int start = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+        long long outer_start = tp.tv_sec * 1000000 + tp.tv_usec;
 
-        for (int ii = 0; ii < 10000000; ii++) {
+
+        for (int ii = 0; ii < num_ops; ii++) {
 //          for (size_t j = 0; j < keys.size(); j++) {
           int j = rand() % keys.size();
+//          auto start = std::chrono::high_resolution_clock::now();
+          TIMER_START;
           test_iter->Seek(keys[j]);
-          // assert(test_iter->status().ok());
-          // assert(test_iter->Valid());
-          // assert(test_iter->value().ToString().compare(values[j]) == 0);
-//          }
+          TIMER_LAP(kEnd);
+          // auto elapsed = std::chrono::high_resolution_clock::now() - start;
+          // long long micros = std::chrono::duration_cast<
+          //   std::chrono::microseconds>(elapsed).count();
+          // vec[ii] = micros;
+          // nano_vec[nano_idx++] = std::make_pair(kSeek, micros);
+//          fprintf(stdout, "op %3d: %3lld us\n-------\n", ii, vec[ii]);
         }
 
         gettimeofday(&tp, NULL);
-        long int end = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+        long long outer_end = tp.tv_sec * 1000000 + tp.tv_usec;
+        long long outer_time = outer_end - outer_start;
 
-        fprintf(stdout, "time: %ld ms\n", end - start);
+        // for (int ii = 0; ii < num_ops; ii++) {
+        //   fprintf(stdout, "op %3d: %3lld us\n", ii, vec[ii]);
+        // }
+        fprintf(stdout, "time: %lld us\n", outer_time);
+        for (int ii = 0; ii < nano_idx; ii++) {
+          fprintf(stdout, "entry %6d: %25s %10lld ns\n", ii,
+                  nano_timer_map[nano_vec[ii].first].c_str(),
+                 nano_vec[ii].second);
+        }
+
 //        default_env->DeleteFile(testFileName);
         fprintf(stdout, " Size: %" PRIu64 "\n", file_size);
       }
       return 0;
+    };
+    if (command == "perf_binary") {
+      if(RunPerf(false)) {
+        continue;
+      } else {
+        return 0;
+      }
+    }
+
+    if (command == "perf_mse") {
+      if(RunPerf(true)) {
+        continue;
+      } else {
+        return 0;
+      }
     }
 
     if (command == "raw") {

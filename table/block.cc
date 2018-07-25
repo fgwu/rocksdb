@@ -140,6 +140,8 @@ void BlockIter::Prev() {
 }
 
 void BlockIter::Seek(const Slice& target) {
+//  auto start = std::chrono::high_resolution_clock::now();
+  TIMER_LAP(kSeekStart);
   Slice seek_key = target;
   if (!key_includes_seq_) {
     seek_key = ExtractUserKey(target);
@@ -172,6 +174,12 @@ void BlockIter::Seek(const Slice& target) {
 
   while (true) {
     if (!ParseNextKey() || Compare(key_, seek_key) >= 0) {
+      // auto elapsed = std::chrono::high_resolution_clock::now() - start;
+      // long long nanos = std::chrono::duration_cast<
+        // std::chrono::nanoseconds>(elapsed).count();
+//      fprintf(stdout, "      Seek:  %6lld ns\n", nanos);
+//      TIMER_STOP(kSeek);
+      TIMER_LAP(kSeekEnd);
       return;
     }
   }
@@ -304,9 +312,13 @@ bool BlockIter::ParseNextKey() {
 // the first restart point with a key = target
 bool BlockIter::BinarySeek(const Slice& target, uint32_t left, uint32_t right,
                            uint32_t* index) {
+  TIMER_LAP(kBinaryStart);
   assert(left <= right);
 
+  int cnt = 0;
+  // auto start = std::chrono::high_resolution_clock::now();
   while (left < right) {
+    cnt++;
     uint32_t mid = (left + right + 1) / 2;
     uint32_t region_offset = GetRestartPoint(mid);
     uint32_t shared, non_shared, value_length;
@@ -332,6 +344,13 @@ bool BlockIter::BinarySeek(const Slice& target, uint32_t left, uint32_t right,
   }
 
   *index = left;
+  // auto elapsed = std::chrono::high_resolution_clock::now() - start;
+  // long long nanos = std::chrono::duration_cast<
+  //   std::chrono::nanoseconds>(elapsed).count();
+
+  // fprintf(stdout, "BinarySeek:   %5lld ns, branching %d\n", nanos, cnt);
+  // std::cout << "Binary branching " << cnt << "\n";
+  TIMER_LAP(kBinaryEnd);
   return true;
 }
 
@@ -408,8 +427,8 @@ bool BlockIter::BinaryBlockIndexSeek(const Slice& target, uint32_t* block_ids,
 // the first restart point with a key = target
 // if error occurred, return false; otherwise return true.
 bool BlockIter::MseSeek(const Slice& target, uint32_t* index) {
+  TIMER_LAP(kMseSeekStart);
   assert(mse_index_);
-
   auto CompareBlockKey = [&](uint32_t idx, int* cmp_result /* output*/){
     assert (idx < num_restarts_);
 
@@ -446,6 +465,8 @@ bool BlockIter::MseSeek(const Slice& target, uint32_t* index) {
     return status;
   }
 
+  // auto start = std::chrono::high_resolution_clock::now();
+  // uint32_t old_index = *index;
   if (cmp <= 0) {
     // shift right until condition is satisfied
     if (*index >= num_restarts_ - 1) {
@@ -474,6 +495,10 @@ bool BlockIter::MseSeek(const Slice& target, uint32_t* index) {
         break;
       }
     }
+    // std::cout << "mse error "
+    //           << ((*index > old_index) ? (*index - old_index) :
+    //               (old_index - *index)) << "\n";
+    TIMER_LAP(kMseSeekEnd);
     return status;
   }
 }

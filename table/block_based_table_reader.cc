@@ -1921,6 +1921,7 @@ bool BlockBasedTable::PrefixMayMatch(
 }
 
 void BlockBasedTableIterator::Seek(const Slice& target) {
+  TIMER_LAP(kTableSeekStart);
   if (!CheckPrefixMayMatch(target)) {
     ResetDataIter();
     return;
@@ -1935,7 +1936,9 @@ void BlockBasedTableIterator::Seek(const Slice& target) {
     return;
   }
 
+  TIMER_LAP(kInitDataBlockStart);
   InitDataBlock();
+  TIMER_LAP(kInitDataBlockEnd);
 
   data_block_iter_.Seek(target);
 
@@ -1946,6 +1949,7 @@ void BlockBasedTableIterator::Seek(const Slice& target) {
          (!key_includes_seq_ &&
           icomp_.user_comparator()->Compare(ExtractUserKey(target),
                                             data_block_iter_.key()) <= 0));
+  TIMER_LAP(kTableSeekEnd);
 }
 
 void BlockBasedTableIterator::SeekForPrev(const Slice& target) {
