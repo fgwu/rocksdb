@@ -348,9 +348,15 @@ bool DataBlockIter::ParseNextDataKey() {
     }
 
     value_ = Slice(p + non_shared, value_length);
-    while (restart_index_ + 1 < num_restarts_ &&
-           GetRestartPoint(restart_index_ + 1) < current_) {
-      ++restart_index_;
+
+    // a non-null data_block_hash_index_ means this DataBlockIter is a point
+    // lookup Iterator, so the restart_index_ is not used later. So we don't
+    // have to adjust it.
+    if (!data_block_hash_index_) {
+      while (restart_index_ + 1 < num_restarts_ &&
+             GetRestartPoint(restart_index_ + 1) < current_) {
+        ++restart_index_;
+      }
     }
     return true;
   }
@@ -524,8 +530,9 @@ bool DataBlockIter::HashSeek(const Slice& target) {
   data_block_hash_index_->NewIterator(&data_block_hash_iter, user_key);
 
   for (; data_block_hash_iter.Valid(); data_block_hash_iter.Next()) {
-    uint32_t restart_index = data_block_hash_iter.Value();
-    SeekToRestartPoint(restart_index);
+    uint32_t offset = data_block_hash_iter.Value();
+    key_.Clear();
+    value_ = Slice(data_ + offset, 0);
     while (true) {
       if (!ParseNextDataKey() || Compare(key_, user_key) >= 0) {
         // key_ is internal key. If key_ is parsed successfully, it is either:
