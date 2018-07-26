@@ -177,6 +177,22 @@ class Block {
   // NOTE: for the hash based lookup, if a key prefix doesn't match any key,
   // the iterator will simply be set as "invalid", rather than returning
   // the key that is just pass the target key.
+  //
+  // NOTE: the parameter `use_data_block_hash_index` is to distinguish a point
+  // lookup DataBlockIter and a seek DataBlockIter. Only a point lookup
+  // DataBlockIter can use DataBlockHashIndex.
+  // Besides, IndexBlockIter should never use DataBlockHashIndex.
+  //
+  // The following three statements are equivalent:
+  // A DataBlockIter is a point lookup DataBlockIter
+  // iff. use_data_block_hash_index is set to true in Block::NewIterator()
+  // iff. DataBlockIter is init'ed with data_block_hash_index is not nullptr
+  //
+  // Point lookup DataBlockIter will not set restart_index_ to the
+  // right place. So Prev() cannot be used in a point lookup DataBlockIter.
+  // It is the callers' responsibility not using Prev() in a point lookup
+  // DataBlockIter.
+
   template <typename TBlockIter>
   TBlockIter* NewIterator(const Comparator* comparator,
                           const Comparator* user_comparator,
@@ -184,7 +200,8 @@ class Block {
                           Statistics* stats = nullptr,
                           bool total_order_seek = true,
                           bool key_includes_seq = true,
-                          BlockPrefixIndex* prefix_index = nullptr);
+                          BlockPrefixIndex* prefix_index = nullptr,
+                          bool use_data_block_hash_index = false);
 
   // Report an approximation of how much memory has been used.
   size_t ApproximateMemoryUsage() const;

@@ -621,7 +621,8 @@ DataBlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
                                   DataBlockIter* iter, Statistics* stats,
                                   bool /*total_order_seek*/,
                                   bool /*key_includes_seq*/,
-                                  BlockPrefixIndex* /*prefix_index*/) {
+                                  BlockPrefixIndex* /*prefix_index*/,
+                                  bool use_data_block_hash_index) {
   DataBlockIter* ret_iter;
   if (iter != nullptr) {
     ret_iter = iter;
@@ -639,7 +640,9 @@ DataBlockIter* Block::NewIterator(const Comparator* cmp, const Comparator* ucmp,
   } else {
     ret_iter->Initialize(cmp, ucmp, data_, restart_offset_, num_restarts_,
                          global_seqno_, read_amp_bitmap_.get(), cachable(),
-                         data_block_hash_index_.get());
+                         use_data_block_hash_index ?
+                           data_block_hash_index_.get() :
+                           nullptr);
     if (read_amp_bitmap_) {
       if (read_amp_bitmap_->GetStatistics() != stats) {
         // DB changed the Statistics pointer, we need to notify read_amp_bitmap_
@@ -656,7 +659,8 @@ IndexBlockIter* Block::NewIterator(const Comparator* cmp,
                                    const Comparator* ucmp, IndexBlockIter* iter,
                                    Statistics* /*stats*/, bool total_order_seek,
                                    bool key_includes_seq,
-                                   BlockPrefixIndex* prefix_index) {
+                                   BlockPrefixIndex* prefix_index,
+                                   bool /* use_data_block_hash_index */) {
   IndexBlockIter* ret_iter;
   if (iter != nullptr) {
     ret_iter = iter;

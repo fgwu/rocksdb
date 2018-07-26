@@ -544,8 +544,13 @@ TEST_F(BlockTest, DataBlockHashIndexTest) {
   Block reader(std::move(contents), kDisableGlobalSequenceNumber);
 
   // random seek existent keys
-  auto iter =
-      reader.NewIterator<DataBlockIter>(options.comparator, options.comparator);
+  auto iter = reader.NewIterator<DataBlockIter>(
+      options.comparator, options.comparator,
+      nullptr /* iter */, nullptr /* stats */,
+      false /* total_order_seek, dont care */,
+      true /* key_includes_seq, dont care */,
+      nullptr /* prefix_index, dont care*/,
+      true /* use_data_block_hash_index */);
 
   for (int i = 0; i < num_records; i++) {
     // find a random key in the lookaside array
