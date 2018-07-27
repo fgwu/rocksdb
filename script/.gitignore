@@ -1,0 +1,9 @@
+rocksdb
+out.perf-folded
+*.svg
+perf.data*
+typescript
+suffix_index_perf
+*.log
+*.sst
+*.txt
