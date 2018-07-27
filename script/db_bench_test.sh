@@ -16,7 +16,7 @@ rm -rf  /dev/shm/*
 $DB_BENCH  --data_block_index_type=${block_index} \
            --db=/dev/shm/${block_index} \
            --block_size=16000 --level_compaction_dynamic_level_bytes=1 \
-           --num=200000000 \
+           --num=10000000 \
            --key_size=$ks \
            --value_size=$vs \
            --benchmarks=fillseq --compression_type=snappy \
@@ -28,8 +28,8 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --db=/dev/shm/${block_index} \
            --block_size=16000 --level_compaction_dynamic_level_bytes=1 \
            --use_existing_db=true \
-           --num=200000000 \
-           --reads=10000000 \
+           --num=10000000 \
+           --reads=100000000 \
            --key_size=$ks \
            --value_size=$vs \
            --benchmarks=readrandom --compression_type=snappy \
@@ -53,4 +53,4 @@ bw=$(grep readrandom readrand_${block_index}.log | awk '{print $7}')
 cpu_util=$(grep -Po "<title>rocksdb::DataBlockIter::Seek.*samples, \K[1-9]+\.[^%]+" ${perf_figure})
 space=$(du /dev/shm/${block_index} | grep -Po '^\d+')
 
-echo $ks, ${vs}, ${micros_op}, ${ops_sec}, ${bw}, ${cpu_util}, ${space}| tee -a k.log
+echo $ks, ${vs}, ${block_index}, ${micros_op}, ${ops_sec}, ${bw}, ${cpu_util}, ${space}| tee -a k.log
