@@ -109,6 +109,8 @@ struct BlockBasedTableOptions {
 
   DataBlockIndexType data_block_index_type = kDataBlockBinarySearch;
 
+  int64_t block_hash_num_buckets = 400;
+
   // This option is now deprecated. No matter what value it is set to,
   // it will behave as if hash_index_allow_collision=true.
   bool hash_index_allow_collision = true;
