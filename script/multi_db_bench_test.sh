@@ -14,8 +14,8 @@ vs=40
 #done
 
 (vs=${vs} ks=${ks} block_index=binary ${script_dir}/db_bench_test.sh)
-for buck in 1 4 16 64 256 512; do
-    echo vs=${vs} ks=${ks} block_index=hash num_buckets=${buck}
-    continue
+for buck in 1 2 4 8 16 32 64 128 256 512; do
+#for buck in 1 512; do
+ #   echo vs=${vs} ks=${ks} block_index=hash num_buckets=${buck}
     (vs=${vs} ks=${ks} block_index=hash num_buckets=${buck} ${script_dir}/db_bench_test.sh)
 done
