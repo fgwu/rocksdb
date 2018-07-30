@@ -15,7 +15,7 @@
 namespace rocksdb {
 
 bool SearchForOffset(DataBlockHashIndex& index, const Slice& key,
-                     uint16_t& restart_point) {
+                     uint8_t& restart_point) {
   DataBlockHashIndexIterator data_block_hash_index_iter;
   DataBlockHashIndexIterator* iter = &data_block_hash_index_iter;
   index.NewIterator(iter, key);
@@ -33,7 +33,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
 
   for (uint16_t i = 0; i < 2; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -55,7 +55,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
   for (uint16_t i = 0; i < 2; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
@@ -66,7 +66,7 @@ TEST(DataBlockHashIndex, DataBlockHashTest) {
 
   for (uint16_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -88,7 +88,7 @@ TEST(DataBlockHashIndex, DataBlockHashTest) {
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
   for (uint16_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
@@ -99,7 +99,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
 
   for (uint16_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     builder.Add(key, restart_point);
   }
 
@@ -121,21 +121,21 @@ TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
   for (uint16_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
   }
 }
 
 TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
   DataBlockHashIndexBuilder builder(1000);
-  std::unordered_map<std::string, uint16_t> m;
+  std::unordered_map<std::string, uint8_t> m;
 
   for (uint16_t i = 0; i < 10000; i++) {
     if (i % 2) {
       continue;  // leave half of the keys out
     }
     std::string key = "key" + std::to_string(i);
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     builder.Add(key, restart_point);
     m[key] = restart_point;
   }
@@ -158,7 +158,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
   for (uint16_t i = 0; i < 100; i++) {
     std::string key = "key" + std::to_string(i);
-    uint16_t restart_point = i;
+    uint8_t restart_point = i;
     if (m.count(key)) {
       ASSERT_TRUE(m[key] == restart_point);
       ASSERT_TRUE(SearchForOffset(index, key, restart_point));
