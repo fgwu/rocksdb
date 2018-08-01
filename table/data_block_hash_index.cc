@@ -57,7 +57,7 @@ void DataBlockHashIndexBuilder::Reset() {
     num_buckets_ * sizeof(uint8_t) /*n buckets*/;
 }
 
-DataBlockHashIndex::DataBlockHashIndex(Slice block_content) {
+void DataBlockHashIndex::Initialize(Slice block_content) {
   assert(block_content.size() >=
          2 * sizeof(uint16_t));  // NUM_BUCK and MAP_START
 
