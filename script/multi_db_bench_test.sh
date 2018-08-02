@@ -13,9 +13,17 @@ vs=40
 #    (vs=${vs} ks=${ks} block_index=hash ${script_dir}/db_bench_test.sh)
 #done
 
+#:<<END
 (vs=${vs} ks=${ks} block_index=binary ${script_dir}/db_bench_test.sh)
-for buck in 1 2 4 8 16 32 64 128 256 512; do
-#for buck in 1 512; do
- #   echo vs=${vs} ks=${ks} block_index=hash num_buckets=${buck}
+for buck in 256 512 1024 2048; do
+#for buck in 8192; do
     (vs=${vs} ks=${ks} block_index=hash num_buckets=${buck} ${script_dir}/db_bench_test.sh)
 done
+#END
+:<<END
+buck=8192
+for threads in 10 20 30 40 50; do
+    (vs=${vs} ks=${ks} block_index=binary threads=${threads} ${script_dir}/db_bench_test.sh)
+    (vs=${vs} ks=${ks} block_index=hash num_buckets=${buck} threads=${threads} ${script_dir}/db_bench_test.sh)
+done
+END
