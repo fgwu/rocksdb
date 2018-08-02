@@ -31,7 +31,7 @@ bool SearchForOffset(DataBlockHashIndex& index, const Slice& key,
 TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
   DataBlockHashIndexBuilder builder(5);
   for (int j = 0; j < 5; j++) {
-    for (uint16_t i = 0; i < 2 + j; i++) {
+    for (uint8_t i = 0; i < 2 + j; i++) {
       std::string key("key" + std::to_string(i));
       uint8_t restart_point = i;
       builder.Add(key, restart_point);
@@ -54,7 +54,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
 
     // the additional hash map should start at the end of the buffer
     ASSERT_EQ(original_size, index.DataBlockHashMapStart());
-    for (uint16_t i = 0; i < 2; i++) {
+    for (uint8_t i = 0; i < 2; i++) {
       std::string key("key" + std::to_string(i));
       uint8_t restart_point = i;
       ASSERT_TRUE(SearchForOffset(index, key, restart_point));
@@ -67,7 +67,7 @@ TEST(DataBlockHashIndex, DataBlockHashTest) {
   // bucket_num = 200, #keys = 100. 50% utilization
   DataBlockHashIndexBuilder builder(200);
 
-  for (uint16_t i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
     uint8_t restart_point = i;
     builder.Add(key, restart_point);
@@ -90,7 +90,7 @@ TEST(DataBlockHashIndex, DataBlockHashTest) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
-  for (uint16_t i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
     uint8_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
@@ -101,7 +101,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
   // bucket_num = 2. There will be intense hash collisions
   DataBlockHashIndexBuilder builder(2);
 
-  for (uint16_t i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
     uint8_t restart_point = i;
     builder.Add(key, restart_point);
@@ -124,7 +124,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
-  for (uint16_t i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
     uint8_t restart_point = i;
     ASSERT_TRUE(SearchForOffset(index, key, restart_point));
@@ -135,7 +135,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
   DataBlockHashIndexBuilder builder(1000);
   std::unordered_map<std::string, uint8_t> m;
 
-  for (uint16_t i = 0; i < 10000; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     if (i % 2) {
       continue;  // leave half of the keys out
     }
@@ -162,7 +162,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
 
   // the additional hash map should start at the end of the buffer
   ASSERT_EQ(original_size, index.DataBlockHashMapStart());
-  for (uint16_t i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     std::string key = "key" + std::to_string(i);
     uint8_t restart_point = i;
     if (m.count(key)) {
