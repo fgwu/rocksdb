@@ -13,13 +13,20 @@ vs=40
 #    (vs=${vs} ks=${ks} block_index=hash ${script_dir}/db_bench_test.sh)
 #done
 
-#:<<END
-(vs=${vs} ks=${ks} block_index=binary ${script_dir}/db_bench_test.sh)
-for buck in 256 512 1024 2048; do
-#for buck in 8192; do
-    (vs=${vs} ks=${ks} block_index=hash num_buckets=${buck} ${script_dir}/db_bench_test.sh)
+
+for restart_interval in 1 16; do
+    (vs=${vs} ks=${ks} restart_interval=${restart_interval} \
+       block_index=binary \
+       ${script_dir}/db_bench_test.sh)
+
+    for buck in 256 512 1024; do
+        #for buck in 8192; do
+        (vs=${vs} ks=${ks} restart_interval=${restart_interval} \
+           block_index=hash num_buckets=${buck} \
+           ${script_dir}/db_bench_test.sh)
+    done
 done
-#END
+
 :<<END
 buck=8192
 for threads in 10 20 30 40 50; do
