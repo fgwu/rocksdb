@@ -178,14 +178,13 @@ void DataBlockIter::Seek(const Slice& target) {
   //   i.e. the block content contains hash map
   if (data_block_hash_index_) {
     if (data_block_hash_index_->Valid()) {
-    // hash seek will set the current_ and restart_index_,
+      // hash seek will set the current_ and restart_index_,
       // no need to pass back `index`, or linear search.
       HashSeek(target);
-      return;
     } else {
       status_ = Status::NotSupported("block content does not contain hash map");
-      return;
     }
+    return;
   }
 
   bool ok = BinarySeek(seek_key, 0, num_restarts_ - 1, &index, comparator_);
