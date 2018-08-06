@@ -65,20 +65,23 @@ const uint8_t kCollision = 254;
 
 class DataBlockHashIndexBuilder {
  public:
-  explicit DataBlockHashIndexBuilder(uint16_t n)
+  explicit DataBlockHashIndexBuilder(uint16_t n, double r)
       : num_buckets_(n),
+        util_ratio_(r),
         buckets_(n, kNoEntry),
         estimate_(2 * sizeof(uint16_t) /*num_buck and maps_start*/ +
                   n * sizeof(uint8_t) /*n buckets*/) {}
   void Add(const Slice& key, const uint8_t& restart_index);
   void Finish(std::string& buffer);
-  void Reset();
+  void Reset(uint16_t estimated_num_keys);
   inline size_t EstimateSize() { return estimate_; }
 
  private:
   uint16_t num_buckets_;
+  double util_ratio_;
   std::vector<uint8_t> buckets_;
   size_t estimate_;
+  friend class DataBlockHashIndex_DataBlockHashTestSmall_Test;
 };
 
 class DataBlockHashIndex {

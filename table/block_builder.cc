@@ -44,18 +44,20 @@ namespace rocksdb {
 BlockBuilder::BlockBuilder(
     int block_restart_interval, bool use_delta_encoding,
     BlockBasedTableOptions::DataBlockIndexType index_type,
-    int64_t block_hash_num_buckets)
+    int64_t block_hash_num_buckets, double data_block_hash_table_util_ratio)
     : block_restart_interval_(block_restart_interval),
       use_delta_encoding_(use_delta_encoding),
       restarts_(),
       counter_(0),
-      finished_(false) {
+      finished_(false),
+      num_keys_(0){
   switch (index_type) {
     case BlockBasedTableOptions::kDataBlockBinarySearch:
       break;
     case BlockBasedTableOptions::kDataBlockHashSearch:
       data_block_hash_index_builder_.reset(
-          new DataBlockHashIndexBuilder(block_hash_num_buckets));
+          new DataBlockHashIndexBuilder(block_hash_num_buckets,
+                                        data_block_hash_table_util_ratio));
       break;
     default:
       assert(0);
@@ -74,8 +76,10 @@ void BlockBuilder::Reset() {
   finished_ = false;
   last_key_.clear();
   if (data_block_hash_index_builder_) {
-    data_block_hash_index_builder_->Reset();
+    // use the num_keys_ of current block as an estimate for the next block.
+    data_block_hash_index_builder_->Reset(num_keys_);
   }
+  num_keys_ = 0;
 }
 
 size_t BlockBuilder::EstimateSizeAfterKV(const Slice& key, const Slice& value)
@@ -164,6 +168,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   counter_++;
+  num_keys_++;
   estimate_ += buffer_.size() - curr_size;
 }
 

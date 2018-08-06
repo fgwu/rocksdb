@@ -26,7 +26,8 @@ class BlockBuilder {
                         bool use_delta_encoding = true,
                         BlockBasedTableOptions::DataBlockIndexType index_type =
                         BlockBasedTableOptions::kDataBlockBinarySearch,
-                        int64_t block_hash_num_buckets = 400);
+                        int64_t block_hash_num_buckets = 400,
+                        double data_block_hash_table_util_ratio = 0.75);
 
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
@@ -66,7 +67,7 @@ class BlockBuilder {
   int                   counter_;   // Number of entries emitted since restart
   bool                  finished_;  // Has Finish() been called?
   std::string           last_key_;
-
+  uint16_t              num_keys_;  // num of keys added to this block
   std::unique_ptr<DataBlockHashIndexBuilder> data_block_hash_index_builder_;
 };
 

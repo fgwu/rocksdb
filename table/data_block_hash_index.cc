@@ -51,7 +51,17 @@ void DataBlockHashIndexBuilder::Finish(std::string& buffer) {
   assert(buffer.size() < (1 << 16));
 }
 
-void DataBlockHashIndexBuilder::Reset() {
+void DataBlockHashIndexBuilder::Reset(uint16_t estimated_num_keys) {
+  // update the num_bucket using the new estimated_num_keys for this block
+  if (util_ratio_ <= 0) {
+    util_ratio_ = 0.75; // sanity check
+  }
+  num_buckets_ = static_cast<uint16_t>(
+      static_cast<double>(estimated_num_keys) / util_ratio_);
+  if (num_buckets_ == 0) {
+    num_buckets_ = 400; // sanity check
+  }
+  buckets_.resize(num_buckets_);
   std::fill(buckets_.begin(), buckets_.end(), kNoEntry);
   estimate_ = 2 * sizeof(uint16_t) /*num_buck and maps_start*/+
     num_buckets_ * sizeof(uint8_t) /*n buckets*/;

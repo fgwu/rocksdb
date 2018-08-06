@@ -29,7 +29,7 @@ bool SearchForOffset(DataBlockHashIndex& index, const Slice& key,
 }
 
 TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
-  DataBlockHashIndexBuilder builder(5);
+  DataBlockHashIndexBuilder builder(5, 0.75);
   for (int j = 0; j < 5; j++) {
     for (uint8_t i = 0; i < 2 + j; i++) {
       std::string key("key" + std::to_string(i));
@@ -59,13 +59,15 @@ TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
       uint8_t restart_point = i;
       ASSERT_TRUE(SearchForOffset(index, key, restart_point));
     }
-    builder.Reset();
+    builder.Reset(2 + j);
+    ASSERT_EQ(builder.num_buckets_,
+              static_cast<uint16_t>((static_cast<double>(2 + j) / 0.75)));
   }
 }
 
 TEST(DataBlockHashIndex, DataBlockHashTest) {
   // bucket_num = 200, #keys = 100. 50% utilization
-  DataBlockHashIndexBuilder builder(200);
+  DataBlockHashIndexBuilder builder(200, 0.75);
 
   for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
@@ -99,7 +101,7 @@ TEST(DataBlockHashIndex, DataBlockHashTest) {
 
 TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
   // bucket_num = 2. There will be intense hash collisions
-  DataBlockHashIndexBuilder builder(2);
+  DataBlockHashIndexBuilder builder(2, 0.75);
 
   for (uint8_t i = 0; i < 100; i++) {
     std::string key("key" + std::to_string(i));
@@ -132,7 +134,7 @@ TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
 }
 
 TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
-  DataBlockHashIndexBuilder builder(1000);
+  DataBlockHashIndexBuilder builder(1000, 0.75);
   std::unordered_map<std::string, uint8_t> m;
 
   for (uint8_t i = 0; i < 100; i++) {
