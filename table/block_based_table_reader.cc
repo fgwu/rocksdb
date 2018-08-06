@@ -2420,7 +2420,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
 
         if (!biter.status().IsNotSupported()) {
           // HashSeek supported
-
+          RecordTick(rep_->ioptions.statistics, DATA_BLOCK_HASH_INDEX_SUCCESS);
           if (biter.Valid()) { // found
             ParsedInternalKey parsed_key;
             s = Status::OK();
@@ -2437,6 +2437,7 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
         }
 
         //HashSeek is not supported, falling back to binary seek.
+        RecordTick(rep_->ioptions.statistics, DATA_BLOCK_HASH_INDEX_FALLBACK);
         biter.Invalidate(biter.status());
 
         // Call the *saver function on each entry/block until it returns false

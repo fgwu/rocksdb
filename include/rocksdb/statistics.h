@@ -323,6 +323,11 @@ enum Tickers : uint32_t {
   // Number of keys actually found in MultiGet calls (vs number requested by caller)
   // NUMBER_MULTIGET_KEYS_READ gives the number requested by caller
   NUMBER_MULTIGET_KEYS_FOUND,
+
+  // # of cases when DataBlockHashIndex succeeds
+  DATA_BLOCK_HASH_INDEX_SUCCESS,
+  // # of cases when DataBlockHashIndex falls back to binary seek.
+  DATA_BLOCK_HASH_INDEX_FALLBACK,
   TICKER_ENUM_MAX
 };
 
@@ -475,6 +480,8 @@ const std::vector<std::pair<Tickers, std::string>> TickersNameMap = {
     {TXN_DUPLICATE_KEY_OVERHEAD, "rocksdb.txn.overhead.duplicate.key"},
     {TXN_SNAPSHOT_MUTEX_OVERHEAD, "rocksdb.txn.overhead.mutex.snapshot"},
     {NUMBER_MULTIGET_KEYS_FOUND, "rocksdb.number.multiget.keys.found"},
+    {DATA_BLOCK_HASH_INDEX_FALLBACK, "rocksdb.data.block.hash.index.fallback"},
+    {DATA_BLOCK_HASH_INDEX_SUCCESS, "rocksdb.data.block.hash.index.success"},
 };
 
 /**
