@@ -4,10 +4,11 @@
 : ${vs:=32}
 : ${block_index:=binary}
 : ${num_buckets:=500}
-: ${num:=20000000}
-: ${reads:=1000000}
+: ${num:=200000000}
+: ${reads:=10000000}
 : ${threads:=1}
 : ${restart_interval:=16}
+: ${util_ratio:=0.75}
 
 #test_prefix=k${ks}v${vs}t${threads}_${block_index}${num_buckets}
 
@@ -20,7 +21,7 @@ db_dir=/home/fwu/db
 
 
 dataset_prefix=k${ks}_v${vs}_N$(($num/1000000))
-index_prefix=RI${restart_interval}_${block_index}${num_buckets}
+index_prefix=RI${restart_interval}_${block_index}${util_ratio}
 read_prefix=R$(($reads/1000000))_t${threads}
 
 
@@ -64,7 +65,8 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --benchmarks=fillseq --compression_type=snappy \
            --statistics=false --block_restart_interval=1 \
            --compression_ratio=0.4 \
-           --block_hash_num_buckets=${num_buckets}\
+           --block_hash_num_buckets=${num_buckets} \
+           --data_block_hash_table_util_ratio=${util_ratio} \
            --statistics=true \
            --perf_level=2 \
            >${write_log}
@@ -85,6 +87,7 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --compression_ratio=0.4 \
            --cache_size=20000000000 \
            --block_hash_num_buckets=${num_buckets} \
+           --data_block_hash_table_util_ratio=${util_ratio} \
            --use_direct_reads \
            --disable_auto_compactions \
            --threads=${threads} \
@@ -112,7 +115,7 @@ hash_total=$((${hash_fallback} + ${hash_success}))
 fallback_ratio=$(python -c "print(1.0*${hash_fallback}/${hash_total})")
 echo ${dataset_prefix}_${read_prefix}_${index_prefix}, \
      ${bw}, ${cpu_util}, ${space}, ${hash_fallback}, ${hash_total}, \
-     ${fallback_ratio} | tee -a ${script_dir}/k.log
+     ${fallback_ratio} | tee -a k.log
 
 :<<END
 echo ${dataset_prefix}_${read_prefix}_${index_prefix}, ${micros_op}, ${ops_sec}, \
