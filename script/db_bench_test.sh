@@ -4,8 +4,8 @@
 : ${vs:=32}
 : ${block_index:=binary}
 : ${num_buckets:=500}
-: ${num:=1000000000}
-: ${reads:=100000000}
+: ${num:=20000000}
+: ${reads:=1000000}
 : ${threads:=1}
 : ${restart_interval:=16}
 
@@ -48,10 +48,11 @@ read_log=${log_dir}/readrand_${test_prefix}.log
 fig_name=${test_prefix}_$(date +"%Y-%m-%d_%H-%M-%S").svg
 perf_figure=${fig_dir}/${fig_name}
 echo ---------------------------------------------------------------------
-echo test: "       " ${dataset_prefix}_${test_prefix}
-echo read_log: "   " $(readlink -f ${read_log})
-echo fig_dir: "    " ${perf_figure}
-echo fig_url: "    " https://home.fburl.com/~fwu/${fig_name}
+echo test:" "${dataset_prefix}_${test_prefix}
+echo R_log:""$(readlink -f ${read_log})
+echo W_log:""$(readlink -f ${write_log})
+#echo fig_dir:""${perf_figure}
+echo fig:"  "https://home.fburl.com/~fwu/${fig_name}
 echo ---------------------------------------------------------------------
 
 $DB_BENCH  --data_block_index_type=${block_index} \
@@ -64,6 +65,8 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --statistics=false --block_restart_interval=1 \
            --compression_ratio=0.4 \
            --block_hash_num_buckets=${num_buckets}\
+           --statistics=true \
+           --perf_level=2 \
            >${write_log}
 
 
@@ -78,7 +81,6 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --value_size=$vs \
            --benchmarks=readtocache,readrandom \
            --compression_type=snappy \
-           --statistics=true \
            --block_restart_interval=16 \
            --compression_ratio=0.4 \
            --cache_size=20000000000 \
@@ -86,6 +88,8 @@ $DB_BENCH  --data_block_index_type=${block_index} \
            --use_direct_reads \
            --disable_auto_compactions \
            --threads=${threads} \
+           --statistics=true \
+           --perf_level=2 \
            > ${read_log}
 
 #           --read_cache_size=200000000
@@ -102,6 +106,16 @@ cpu_util=$(grep -Po "<title>rocksdb::DataBlockIter::Seek.*samples, \K[0-9]+\.[^%
 space=$(du ${db} | grep -Po '^\d+')
 
 
+hash_fallback=$(grep hash.index.fallback ${read_log} | awk '{print $4}')
+hash_success=$(grep hash.index.success ${read_log} | awk '{print $4}')
+hash_total=$((${hash_fallback} + ${hash_success}))
+fallback_ratio=$(python -c "print(1.0*${hash_fallback}/${hash_total})")
+echo ${dataset_prefix}_${read_prefix}_${index_prefix}, \
+     ${bw}, ${cpu_util}, ${space}, ${hash_fallback}, ${hash_total}, \
+     ${fallback_ratio} | tee -a ${script_dir}/k.log
 
-
-echo ${dataset_prefix}_${read_prefix}_${index_prefix}, ${micros_op}, ${ops_sec}, ${bw}, ${cpu_util}, ${space}| tee -a k.log
+:<<END
+echo ${dataset_prefix}_${read_prefix}_${index_prefix}, ${micros_op}, ${ops_sec}, \
+     ${bw}, ${cpu_util}, ${space}, ${hash_fallback}, ${hash_total}, \
+     ${fallback_ratio} | tee -a ${script_dir}/k.log
+END

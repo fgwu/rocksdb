@@ -14,16 +14,19 @@ vs=40
 #done
 
 
-for restart_interval in 1 16; do
+for restart_interval in 1; do
+:<<END
     (vs=${vs} ks=${ks} restart_interval=${restart_interval} \
        block_index=binary \
        ${script_dir}/db_bench_test.sh)
-
-    for buck in 256 512 1024; do
+END
+    #    for buck in 256 512 1024 2048; do
+    for buck in 512; do
         #for buck in 8192; do
         (vs=${vs} ks=${ks} restart_interval=${restart_interval} \
            block_index=hash num_buckets=${buck} \
            ${script_dir}/db_bench_test.sh)
+
     done
 done
 
