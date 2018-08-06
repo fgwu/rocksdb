@@ -108,6 +108,9 @@ struct BlockBasedTableOptions {
   };
 
   DataBlockIndexType data_block_index_type = kDataBlockBinarySearch;
+  // #entries/#buckets
+  double data_block_hash_table_util_ratio = 0.75;
+
 
   int64_t block_hash_num_buckets = 400;
 
