@@ -16,6 +16,10 @@
 #include "util/testharness.h"
 #include "util/testutil.h"
 
+#include "db/db_test_util.h"
+#include "rocksdb/merge_operator.h"
+#include "utilities/merge_operators/string_append/stringappend2.h"
+
 namespace rocksdb {
 
 bool SearchForOffset(DataBlockHashIndex& index, const char* data,
@@ -719,6 +723,80 @@ TEST(DataBlockHashIndex, BlockBoundary) {
     ASSERT_EQ(get_context.State(), GetContext::kNotFound);
     value.Reset();
   }
+}
+
+// Test merge operator functionality.
+class DataBlockHashIndexDBTest : public DBTestBase {
+ public:
+  DataBlockHashIndexDBTest()
+      : DBTestBase("/data_block_hash_index_db_test"),
+        sync_fall_back_type_not_supported(0), sync_fall_back_collision(0) {
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::FallBackTypeNotSupported",
+        [&](void* /*arg*/) { sync_fall_back_type_not_supported.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::FallBackCollision",
+        [&](void* /*arg*/) { sync_fall_back_collision.fetch_add(1); });
+  }
+
+  void ResetSyncCounters() {
+    sync_fall_back_type_not_supported.store(0);
+    sync_fall_back_collision.store(0);
+  }
+
+  std::atomic<int> sync_fall_back_type_not_supported;
+  std::atomic<int> sync_fall_back_collision;
+};
+
+TEST_F(DataBlockHashIndexDBTest, MergeOperator) {
+  BlockBasedTableOptions table_options;
+  table_options.data_block_index_type =
+      BlockBasedTableOptions::kDataBlockBinaryAndHash;
+  table_options.block_restart_interval = 1;
+  table_options.block_size = 100;
+
+  Options options;
+  options.comparator = BytewiseComparator();
+  options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+  options.merge_operator = std::make_shared<StringAppendTESTOperator>(',');
+  options.env = env_;
+  Reopen(options);
+
+  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+  std::string value;
+
+  // Given that the block size is set to be 100 Bytes, each values are in the
+  // different block. HashIndex will find the record type unsupported and fall
+  // back.
+  std::string k1(100, 'k');
+  ASSERT_OK(Merge(k1, "a"));
+  ASSERT_OK(Merge(k1, "b"));
+  ASSERT_OK(Merge(k1, "c"));
+  ASSERT_OK(Merge(k1, "d"));
+  ASSERT_OK(Flush());
+  ASSERT_TRUE(db_->Get(ReadOptions(), k1, &value).ok());
+  ASSERT_EQ(value, "a,b,c,d");
+  ASSERT_EQ(sync_fall_back_type_not_supported.load(), 4);
+
+  ResetSyncCounters();
+
+  // All k2 values are in the same block. HashIndex collides and fall back.
+  // The merge will be completed in the inner biter iteration loop as they
+  // are within the same block. So SeekForGetImpl is only called once and
+  // therefore the collision fall back should only happen once.
+  ASSERT_OK(Merge("k2", "a"));
+  ASSERT_OK(Merge("k2", "b"));
+  ASSERT_OK(Merge("k2", "c"));
+  ASSERT_OK(Merge("k2", "d"));
+  ASSERT_OK(Flush());
+  ASSERT_TRUE(db_->Get(ReadOptions(), "k2", &value).ok());
+  ASSERT_EQ(value, "a,b,c,d");
+  ASSERT_EQ(sync_fall_back_collision.load(), 1);
+
+  ResetSyncCounters();
+
+  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
 }
 
 }  // namespace rocksdb

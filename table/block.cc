@@ -268,6 +268,7 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
 
   if (entry == kCollision) {
     // HashSeek not effective, falling back
+    TEST_SYNC_POINT("DataBlockHashIndex::FallBackCollision");
     Seek(target);
     return true;
   }
@@ -326,6 +327,7 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
       value_type != ValueType::kTypeDeletion &&
       value_type != ValueType::kTypeSingleDeletion &&
       value_type != ValueType::kTypeBlobIndex) {
+    TEST_SYNC_POINT("DataBlockHashIndex::FallBackTypeNotSupported");
     Seek(target);
     return true;
   }
