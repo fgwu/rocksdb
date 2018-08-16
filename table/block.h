@@ -149,7 +149,7 @@ class Block {
                  size_t read_amp_bytes_per_bit = 0,
                  Statistics* statistics = nullptr);
 
-  ~Block() = default;
+  ~Block();
 
   size_t size() const { return size_; }
   const char* data() const { return data_; }
@@ -371,7 +371,17 @@ class DataBlockIter final : public BlockIter<Slice> {
 
   virtual void Seek(const Slice& target) override;
 
-  bool SeekForGet(const Slice& target, Statistics* statistics = nullptr);
+  inline bool SeekForGet(const Slice& target,
+                         Statistics* statistics = nullptr) {
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SEEK_FOR_GET);
+    if (!data_block_hash_index_) {
+      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK);
+      Seek(target);
+      return true;
+    }
+
+    return SeekForGetImpl(target, statistics);
+  }
 
   virtual void SeekForPrev(const Slice& target) override;
 
@@ -429,6 +439,7 @@ class DataBlockIter final : public BlockIter<Slice> {
     return comparator_->Compare(ikey.GetInternalKey(), b);
   }
 
+  bool SeekForGetImpl(const Slice& target, Statistics* statistics);
 };
 
 class IndexBlockIter final : public BlockIter<BlockHandle> {
