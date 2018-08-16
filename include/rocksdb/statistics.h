@@ -328,6 +328,8 @@ enum Tickers : uint32_t {
   DATA_BLOCK_HASH_INDEX_SUCCESS,
   // # of cases when DataBlockHashIndex falls back to binary seek.
   DATA_BLOCK_HASH_INDEX_FALLBACK,
+  // # of cases when SeekForGet is called. Should be the sum of the previous two
+  DATA_BLOCK_HASH_INDEX_SEEK_FOR_GET,
   TICKER_ENUM_MAX
 };
 
@@ -482,6 +484,8 @@ const std::vector<std::pair<Tickers, std::string>> TickersNameMap = {
     {NUMBER_MULTIGET_KEYS_FOUND, "rocksdb.number.multiget.keys.found"},
     {DATA_BLOCK_HASH_INDEX_SUCCESS, "rocksdb.data.block.hash.index.success"},
     {DATA_BLOCK_HASH_INDEX_FALLBACK, "rocksdb.data.block.hash.index.fallback"},
+    {DATA_BLOCK_HASH_INDEX_SEEK_FOR_GET,
+     "rocksdb.data.block.hash.index.seek.for.get"},
 };
 
 /**
