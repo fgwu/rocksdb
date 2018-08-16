@@ -432,7 +432,29 @@ TEST(DataBlockHashIndex, BlockTestLarge) {
 
 class DataBlockHashIndexBlockTest : public testing::Test {
  public:
-  DataBlockHashIndexBlockTest() {
+  DataBlockHashIndexBlockTest()
+      : sync_fall_back_type_not_supported(0), sync_fall_back_collision(0),
+        sync_return_no_entry_key_may_exist(0), sync_return_end_of_block(0),
+        sync_return_result_found(0), sync_return_key_not_exist(0) {
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::FallBack:TypeNotSupported",
+        [&](void* /*arg*/) { sync_fall_back_type_not_supported.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::FallBack:Collision",
+        [&](void* /*arg*/) { sync_fall_back_collision.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::Return:NoEntryKeyMayExist",
+        [&](void* /*arg*/) { sync_return_no_entry_key_may_exist.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::Return:EndOfBlock",
+        [&](void* /*arg*/) { sync_return_end_of_block.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "DataBlockHashIndex::Return:ResultFound",
+        [&](void* /*arg*/) { sync_return_result_found.fetch_add(1); });
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "DataBlockHashIndex::Return:KeyNotExist",
+        [&](void* /*arg*/) { sync_return_key_not_exist.fetch_add(1); });
+
     BlockBasedTableOptions table_options;
     table_options.data_block_index_type =
         BlockBasedTableOptions::kDataBlockBinaryAndHash;
@@ -509,7 +531,20 @@ class DataBlockHashIndexBlockTest : public testing::Test {
                                 moptions.prefix_extractor.get()));
   }
 
+
+  void ResetSyncCounters() {
+    sync_fall_back_type_not_supported.store(0);
+    sync_fall_back_collision.store(0);
+  }
+
   Options options;
+
+  std::atomic<int> sync_fall_back_type_not_supported;
+  std::atomic<int> sync_fall_back_collision;
+  std::atomic<int> sync_return_no_entry_key_may_exist;
+  std::atomic<int> sync_return_end_of_block;
+  std::atomic<int> sync_return_result_found;
+  std::atomic<int> sync_return_key_not_exist;
 };
 
 TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
@@ -517,7 +552,6 @@ TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
   // pair will take up one block.
   // [    k1/v1   ][    k2/v2  ]
   // [   Block N  ][ Block N+1 ]
-
   {
     // [ "aab"@100 ][ "axy"@10  ]
     // | Block  N  ][ Block N+1 ]
@@ -541,6 +575,7 @@ TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
     ASSERT_EQ(get_context.State(), GetContext::kFound);
     ASSERT_EQ(value, v2);
     value.Reset();
+    ResetSyncCounters();
   }
 
   {
@@ -566,6 +601,7 @@ TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
     ASSERT_EQ(get_context.State(), GetContext::kFound);
     ASSERT_EQ(value, v2);
     value.Reset();
+    ResetSyncCounters();
   }
 
   {
@@ -591,6 +627,7 @@ TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
     ASSERT_EQ(get_context.State(), GetContext::kFound);
     ASSERT_EQ(value, v1);
     value.Reset();
+    ResetSyncCounters();
   }
 
   {
@@ -615,6 +652,7 @@ TEST_F(DataBlockHashIndexBlockTest, BlockBoundary) {
     TestBoundary(ik1, v1, ik2, v2, seek_ikey, get_context);
     ASSERT_EQ(get_context.State(), GetContext::kNotFound);
     value.Reset();
+    ResetSyncCounters();
   }
 }
 
@@ -625,10 +663,10 @@ class DataBlockHashIndexDBTest : public DBTestBase {
       : DBTestBase("/data_block_hash_index_db_test"),
         sync_fall_back_type_not_supported(0), sync_fall_back_collision(0) {
     rocksdb::SyncPoint::GetInstance()->SetCallBack(
-        "DataBlockHashIndex::FallBackTypeNotSupported",
+        "DataBlockHashIndex::FallBack:TypeNotSupported",
         [&](void* /*arg*/) { sync_fall_back_type_not_supported.fetch_add(1); });
     rocksdb::SyncPoint::GetInstance()->SetCallBack(
-        "DataBlockHashIndex::FallBackCollision",
+        "DataBlockHashIndex::FallBack:Collision",
         [&](void* /*arg*/) { sync_fall_back_collision.fetch_add(1); });
   }
 

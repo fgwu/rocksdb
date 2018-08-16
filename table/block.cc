@@ -263,12 +263,13 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
     // have to conntinue searching the next block. So we invalidate the
     // iterator to tell the caller to go on.
     current_ = restarts_; // Invalidate the iter
+    TEST_SYNC_POINT("DataBlockHashIndex::Return:NoEntryKeyMayExist");
     return true;
   }
 
   if (entry == kCollision) {
     // HashSeek not effective, falling back
-    TEST_SYNC_POINT("DataBlockHashIndex::FallBackCollision");
+    TEST_SYNC_POINT("DataBlockHashIndex::FallBack:Collision");
     Seek(target);
     return true;
   }
@@ -312,12 +313,14 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
     //
     // The result may exist in the next block in either case, so may_exist is
     // returned as true.
+    TEST_SYNC_POINT("DataBlockHashIndex::Return:EndOfBlock");
     return true;
   }
 
   if (user_comparator_->Compare(key_.GetUserKey(), user_key) != 0) {
     // the key is not in this block and cannot be at the next block either.
     // return false to tell the caller to break from the top-level for-loop
+    TEST_SYNC_POINT("DataBlockHashIndex::Return:KeyNotExist");
     return false;
   }
 
@@ -327,12 +330,13 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
       value_type != ValueType::kTypeDeletion &&
       value_type != ValueType::kTypeSingleDeletion &&
       value_type != ValueType::kTypeBlobIndex) {
-    TEST_SYNC_POINT("DataBlockHashIndex::FallBackTypeNotSupported");
+    TEST_SYNC_POINT("DataBlockHashIndex::FallBack:TypeNotSupported");
     Seek(target);
     return true;
   }
 
   // Result found, and the iter is correctly set.
+  TEST_SYNC_POINT("DataBlockHashIndex::Return:ResultFound");
   return true;
 }
 
