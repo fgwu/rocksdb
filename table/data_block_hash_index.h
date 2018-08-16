@@ -106,7 +106,6 @@ class DataBlockHashIndexBuilder {
   bool valid_;
 
   std::vector<std::pair<uint32_t, uint8_t>> hash_and_restart_pairs_;
-  friend class DataBlockHashIndex_DataBlockHashTestSmall_Test;
 };
 
 class DataBlockHashIndex {

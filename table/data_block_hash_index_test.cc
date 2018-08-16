@@ -78,27 +78,33 @@ void GenerateRandomKVs(std::vector<std::string> *keys,
   }
 }
 
-TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
+TEST(DataBlockHashIndex, AddAndLookup) {
   DataBlockHashIndexBuilder builder;
   builder.Initialize(0.75 /*util_ratio*/);
+  std::unordered_map<std::string, uint8_t> key_to_restart_point_map;
+  uint8_t restart_point = 0;
+
   for (int j = 0; j < 5; j++) {
-    for (uint8_t i = 0; i < 2 + j; i++) {
-      std::string key("key" + std::to_string(i));
-      uint8_t restart_point = i;
+    // each time using different number of keys
+    for (uint8_t i = 0; i < 200; i++) {
+      if (i % 2) {
+        continue;  // leave half of the keys out
+      }
+      std::string key = "key" + std::to_string(i);
       builder.Add(key, restart_point);
+      key_to_restart_point_map[key] = restart_point++;
     }
 
     size_t estimated_size = builder.EstimateSize();
 
-    std::string buffer("fake"), buffer2;
+    std::string buffer("filling stuff"), buffer2;
     size_t original_size = buffer.size();
     estimated_size += original_size;
     builder.Finish(buffer);
-
+    ASSERT_TRUE(builder.Valid());
     ASSERT_EQ(buffer.size(), estimated_size);
 
     buffer2 = buffer; // test for the correctness of relative offset
-
 
     Slice s(buffer2);
     DataBlockHashIndex index;
@@ -107,135 +113,20 @@ TEST(DataBlockHashIndex, DataBlockHashTestSmall) {
 
     // the additional hash map should start at the end of the buffer
     ASSERT_EQ(original_size, map_offset);
-    for (uint8_t i = 0; i < 2; i++) {
-      std::string key("key" + std::to_string(i));
-      uint8_t restart_point = i;
-      ASSERT_TRUE(
-          SearchForOffset(index, s.data(), map_offset, key, restart_point));
+    for (uint8_t i = 0; i < 100; i++) {
+      std::string key = "key" + std::to_string(i);
+      if (key_to_restart_point_map.count(key)) {
+        ASSERT_TRUE(
+            SearchForOffset(index, s.data(), map_offset, key,
+                            key_to_restart_point_map[key]));
+      } else {
+        // we allow false positve, so don't test the nonexisting keys.
+        // when false positive happens, the search will continue to the
+        // restart intervals to see if the key really exist.
+      }
     }
     builder.Reset();
-  }
-}
-
-TEST(DataBlockHashIndex, DataBlockHashTest) {
-  // bucket_num = 200, #keys = 100. 50% utilization
-  DataBlockHashIndexBuilder builder;
-  builder.Initialize(0.75 /*util_ratio*/);
-
-  for (uint8_t i = 0; i < 100; i++) {
-    std::string key("key" + std::to_string(i));
-    uint8_t restart_point = i;
-    builder.Add(key, restart_point);
-  }
-
-  size_t estimated_size = builder.EstimateSize();
-
-  std::string buffer("fake content"), buffer2;
-  size_t original_size = buffer.size();
-  estimated_size += original_size;
-  builder.Finish(buffer);
-
-  ASSERT_EQ(buffer.size(), estimated_size);
-
-  buffer2 = buffer; // test for the correctness of relative offset
-
-  Slice s(buffer2);
-  DataBlockHashIndex index;
-  uint16_t map_offset;
-  index.Initialize(s.data(), static_cast<uint16_t>(s.size()), &map_offset);
-
-  // the additional hash map should start at the end of the buffer
-  ASSERT_EQ(original_size, map_offset);
-  for (uint8_t i = 0; i < 100; i++) {
-    std::string key("key" + std::to_string(i));
-    uint8_t restart_point = i;
-    ASSERT_TRUE(
-        SearchForOffset(index, s.data(), map_offset, key, restart_point));
-  }
-}
-
-TEST(DataBlockHashIndex, DataBlockHashTestCollision) {
-  // bucket_num = 2. There will be intense hash collisions
-  DataBlockHashIndexBuilder builder;
-  builder.Initialize(0.75 /*util_ratio*/);
-
-  for (uint8_t i = 0; i < 100; i++) {
-    std::string key("key" + std::to_string(i));
-    uint8_t restart_point = i;
-    builder.Add(key, restart_point);
-  }
-
-  size_t estimated_size = builder.EstimateSize();
-
-  std::string buffer("some other fake content to take up space"), buffer2;
-  size_t original_size = buffer.size();
-  estimated_size += original_size;
-  builder.Finish(buffer);
-
-  ASSERT_EQ(buffer.size(), estimated_size);
-
-  buffer2 = buffer; // test for the correctness of relative offset
-
-  Slice s(buffer2);
-  DataBlockHashIndex index;
-  uint16_t map_offset;
-  index.Initialize(s.data(), static_cast<uint16_t>(s.size()), &map_offset);
-
-  // the additional hash map should start at the end of the buffer
-  ASSERT_EQ(original_size, map_offset);
-  for (uint8_t i = 0; i < 100; i++) {
-    std::string key("key" + std::to_string(i));
-    uint8_t restart_point = i;
-    ASSERT_TRUE(
-        SearchForOffset(index, s.data(), map_offset, key, restart_point));
-  }
-}
-
-TEST(DataBlockHashIndex, DataBlockHashTestLarge) {
-  DataBlockHashIndexBuilder builder;
-  builder.Initialize(0.75 /*util_ratio*/);
-  std::unordered_map<std::string, uint8_t> m;
-
-  for (uint8_t i = 0; i < 100; i++) {
-    if (i % 2) {
-      continue;  // leave half of the keys out
-    }
-    std::string key = "key" + std::to_string(i);
-    uint8_t restart_point = i;
-    builder.Add(key, restart_point);
-    m[key] = restart_point;
-  }
-
-  size_t estimated_size = builder.EstimateSize();
-
-  std::string buffer("filling stuff"), buffer2;
-  size_t original_size = buffer.size();
-  estimated_size += original_size;
-  builder.Finish(buffer);
-
-  ASSERT_EQ(buffer.size(), estimated_size);
-
-  buffer2 = buffer; // test for the correctness of relative offset
-
-  Slice s(buffer2);
-  DataBlockHashIndex index;
-  uint16_t map_offset;
-  index.Initialize(s.data(), static_cast<uint16_t>(s.size()), &map_offset);
-
-  // the additional hash map should start at the end of the buffer
-  ASSERT_EQ(original_size, map_offset);
-  for (uint8_t i = 0; i < 100; i++) {
-    std::string key = "key" + std::to_string(i);
-    uint8_t restart_point = i;
-    if (m.count(key)) {
-      ASSERT_TRUE(m[key] == restart_point);
-      ASSERT_TRUE(
-          SearchForOffset(index, s.data(), map_offset, key, restart_point));
-    } else {
-      // we allow false positve, so don't test the nonexisting keys.
-      // when false positive happens, the search will continue to the
-      // restart intervals to see if the key really exist.
-    }
+    restart_point = 0;
   }
 }
 
@@ -293,7 +184,6 @@ TEST(DataBlockHashIndex, BlockRestartIndexExceedMax) {
     ASSERT_EQ(reader.IndexType(),
               BlockBasedTableOptions::kDataBlockBinaryAndHash);
   }
-
 
   builder.Reset();
 
