@@ -264,14 +264,14 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target,
     // have to conntinue searching the next block. So we invalidate the
     // iterator to tell the caller to go on.
     current_ = restarts_;  // Invalidate the iter
-    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS);
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS_NO_ENTRY);
     return true;
   }
 
   if (entry == kCollision) {
     // HashSeek not effective, falling back
     Seek(target);
-    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK);
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK_COLLISION);
     return true;
   }
 
@@ -314,14 +314,14 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target,
     //
     // The result may exist in the next block in either case, so may_exist is
     // returned as true.
-    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS);
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS_BLK_END);
     return true;
   }
 
   if (user_comparator_->Compare(key_.GetUserKey(), user_key) != 0) {
     // the key is not in this block and cannot be at the next block either.
     // return false to tell the caller to break from the top-level for-loop
-    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS);
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS_NOT_EXIST);
     return false;
   }
 
@@ -332,12 +332,12 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target,
       value_type != ValueType::kTypeSingleDeletion &&
       value_type != ValueType::kTypeBlobIndex) {
     Seek(target);
-    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK);
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK_TYPE);
     return true;
   }
 
   // Result found, and the iter is correctly set.
-  RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS);
+  RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SUCCESS_FOUND);
   return true;
 }
 

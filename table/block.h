@@ -375,7 +375,7 @@ class DataBlockIter final : public BlockIter<Slice> {
                          Statistics* statistics = nullptr) {
     RecordTick(statistics, DATA_BLOCK_HASH_INDEX_SEEK_FOR_GET);
     if (!data_block_hash_index_) {
-      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK);
+      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_FALLBACK_NULL);
       Seek(target);
       return true;
     }
