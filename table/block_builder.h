@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include "rocksdb/slice.h"
+#include "rocksdb/statistics.h"
 #include "rocksdb/table.h"
 #include "table/data_block_hash_index.h"
 
@@ -40,7 +41,7 @@ class BlockBuilder {
   // Finish building the block and return a slice that refers to the
   // block contents.  The returned slice will remain valid for the
   // lifetime of this builder or until Reset() is called.
-  Slice Finish();
+  Slice Finish(Statistics* statistics = nullptr);
 
   // Returns an estimate of the current (uncompressed) size of the block
   // we are building.

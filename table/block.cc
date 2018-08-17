@@ -774,6 +774,7 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
     size_ = 0;  // Error marker
   } else {
     // Should only decode restart points for uncompressed blocks
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_BLOCK_READ_TOTAL);
     if (compression_type() == kNoCompression) {
       num_restarts_ = NumRestarts();
       switch (IndexType()) {
@@ -787,6 +788,7 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
           }
           break;
         case BlockBasedTableOptions::kDataBlockBinaryAndHash:
+          RecordTick(statistics, DATA_BLOCK_HASH_INDEX_BLOCK_READ_HASH);
           if (size_ < sizeof(uint32_t) /* block footer */ +
                           sizeof(uint16_t) /* NUM_BUCK */) {
             size_ = 0;

@@ -110,7 +110,7 @@ size_t BlockBuilder::EstimateSizeAfterKV(const Slice& key, const Slice& value)
   return estimate;
 }
 
-Slice BlockBuilder::Finish() {
+Slice BlockBuilder::Finish(Statistics* statistics) {
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
@@ -123,8 +123,9 @@ Slice BlockBuilder::Finish() {
       CurrentSizeEstimate() <= kMaxBlockSizeSupportedByHashIndex) {
     data_block_hash_index_builder_.Finish(buffer_);
     index_type = BlockBasedTableOptions::kDataBlockBinaryAndHash;
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_BLOCK_BUILD_HASH);
   }
-
+  RecordTick(statistics, DATA_BLOCK_HASH_INDEX_BLOCK_BUILD_TOTAL);
   // footer is a packed format of data_block_index_type and num_restarts
   uint32_t block_footer = PackIndexTypeAndNumRestarts(
       index_type, num_restarts);

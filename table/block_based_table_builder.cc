@@ -324,6 +324,27 @@ struct BlockBasedTableBuilder::Rep {
         column_family_name(_column_family_name),
         creation_time(_creation_time),
         oldest_key_time(_oldest_key_time) {
+
+    Statistics* statistics = ioptions.statistics;
+    RecordTick(statistics, DATA_BLOCK_HASH_INDEX_TABLE_BUILD_TOTAL);
+
+    if (!icomparator.user_comparator()
+        ->CanKeysWithDifferentByteContentsBeEqual()) {
+      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_TABLE_BUILD_CMP_OK);
+    }
+
+    if (table_options.data_block_index_type ==
+        BlockBasedTableOptions::kDataBlockBinaryAndHash) {
+      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_TABLE_BUILD_TYPE_OK);
+    }
+
+    if ((!icomparator.user_comparator()
+         ->CanKeysWithDifferentByteContentsBeEqual()) &&
+        table_options.data_block_index_type ==
+          BlockBasedTableOptions::kDataBlockBinaryAndHash) {
+      RecordTick(statistics, DATA_BLOCK_HASH_INDEX_TABLE_BUILD_BOTH_OK);
+    }
+
     if (table_options.index_type ==
         BlockBasedTableOptions::kTwoLevelIndexSearch) {
       p_index_builder_ = PartitionedIndexBuilder::CreateIndexBuilder(
@@ -484,7 +505,7 @@ void BlockBasedTableBuilder::Flush() {
 void BlockBasedTableBuilder::WriteBlock(BlockBuilder* block,
                                         BlockHandle* handle,
                                         bool is_data_block) {
-  WriteBlock(block->Finish(), handle, is_data_block);
+  WriteBlock(block->Finish(rep_->ioptions.statistics), handle, is_data_block);
   block->Reset();
 }
 
