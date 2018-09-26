@@ -102,7 +102,7 @@ TEST_F(MseTest, MseIndexBuildAndRead) {
     mse_index_builder.Add(Slice("aaaaaaad"), 3.0);
     mse_index_builder.Add(Slice("aaaaaaae"), 4.0);
 
-    mse_index_builder.Finish(block_content, Slice("aaaaaaae"));
+    mse_index_builder.Finish(block_content, Slice("aaaaaaae") /*last_key*/);
 
     MseIndex mse_index_reader(block_content);
     uint32_t index;
@@ -117,27 +117,48 @@ TEST_F(MseTest, MseIndexBuildAndRead) {
     ASSERT_TRUE(mse_index_reader.Seek(Slice("aaaaaaae"), &index));
     ASSERT_LE(abs(index - 4.0), err_limit);
 
-    // here actual_prefix_len = 7, so the next estimated prefix_len = 5
+    // here actual_prefix_len = 7, so the next estimated prefix_len = 6
     mse_index_builder.Reset();
 
-
-    // we delibrately add a set of strings with prefix_len = 4.
-    mse_index_builder.Add(Slice("xxxxa"), 10.0);
-    mse_index_builder.Add(Slice("xxxxb"), 11.0);
-    mse_index_builder.Add(Slice("xxxxc"), 12.0);
-    mse_index_builder.Add(Slice("xxxxd"), 13.0);
-    mse_index_builder.Add(Slice("xxxxe"), 14.0);
+    // we delibrately add a set of strings with length == 5. So the builder
+    // should fail
+    mse_index_builder.Add(Slice("kkkka"), 10.0);
+    mse_index_builder.Add(Slice("kkkkb"), 11.0);
+    mse_index_builder.Add(Slice("kkkkc"), 12.0);
+    mse_index_builder.Add(Slice("kkkkd"), 13.0);
+    mse_index_builder.Add(Slice("kkkke"), 14.0);
 
     std::string block_content2 = "block content2";
-    mse_index_builder.Finish(block_content2, Slice("xxxxe"));
+    mse_index_builder.Finish(block_content2, Slice("kkkke") /*last_key*/);
 
     MseIndex mse_index_reader2(block_content2);
     // So the builder fails. Subsequent seeks should fail
-    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxa"), &index));
-    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxb"), &index));
-    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxc"), &index));
-    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxd"), &index));
-    ASSERT_FALSE(mse_index_reader2.Seek(Slice("xxxxe"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("kkkka"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("kkkkb"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("kkkkc"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("kkkkd"), &index));
+    ASSERT_FALSE(mse_index_reader2.Seek(Slice("kkkke"), &index));
+
+    // now actual_prefix_len = 4, prefix_len estimation = 3
+    mse_index_builder.Reset();
+
+    // here the prefix is 2, so the builder should still fall
+    mse_index_builder.Add(Slice("xxa"), 110.0);
+    mse_index_builder.Add(Slice("xxb"), 111.0);
+    mse_index_builder.Add(Slice("xxc"), 112.0);
+    mse_index_builder.Add(Slice("xxd"), 113.0);
+    mse_index_builder.Add(Slice("xxe"), 114.0);
+
+    std::string block_content3 = "block content3";
+    mse_index_builder.Finish(block_content3, Slice("xxe") /*last_key*/);
+
+    MseIndex mse_index_reader3(block_content3);
+    // So the builder fails. Subsequent seeks should fail
+    ASSERT_FALSE(mse_index_reader3.Seek(Slice("xxa"), &index));
+    ASSERT_FALSE(mse_index_reader3.Seek(Slice("xxb"), &index));
+    ASSERT_FALSE(mse_index_reader3.Seek(Slice("xxc"), &index));
+    ASSERT_FALSE(mse_index_reader3.Seek(Slice("xxd"), &index));
+    ASSERT_FALSE(mse_index_reader3.Seek(Slice("xxe"), &index));
 }
 
 

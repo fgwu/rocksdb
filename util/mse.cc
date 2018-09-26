@@ -10,6 +10,9 @@
 
 namespace rocksdb {
 
+double kInvalidFlag = 2018.0926;
+double kInitCorrCoef = 100;
+
 void Mse::Add(double t, double y) {
   cnt_++;
   t_sum_ += t;
@@ -58,6 +61,13 @@ void MseIndex::Add(Slice slice, double rank) {
   }
   actual_cnt_++;
 
+  if (prefix_len_ > slice.size()) {
+    SetInvalid();
+  }
+  if (!Valid()) {
+    return;
+  }
+
   Slice suffix = ExtractSuffix(slice);
   dout << "base=" << base_ << " prefix_len=" << prefix_len_ << "\n";
   mse_.Add(SliceToDouble(suffix), (double) rank);
@@ -70,8 +80,10 @@ void MseIndex::Finish() {
 void MseIndex::Finish(std::string& buffer, const Slice& last_key) {
   actual_prefix_len_ = CommonPrefixLen(Slice(first_key_), last_key);
 
+  dout << "actual_prefix_len_=" << actual_prefix_len_
+       << " prefix_len_=" << prefix_len_ << "\n";
   // if we successfully predict the prefix_len_
-  if (actual_prefix_len_ >= prefix_len_) {
+  if (Valid() && actual_prefix_len_ >= prefix_len_) {
     Finish();
   }
 
@@ -101,6 +113,7 @@ void MseIndex::Finish(std::string& buffer, const Slice& last_key) {
 
 
 double MseIndex::Seek(Slice slice) {
+  assert(Valid());
   Slice suffix = ExtractSuffix(slice);
   // dout << "Seek() b0=" << b0_ << " b1=" << b1_
   //    << " prefix=" << prefix_len_ << " base=" << base_
@@ -111,11 +124,17 @@ double MseIndex::Seek(Slice slice) {
   //      <<  b0_ + b1_ * SliceToDouble(suffix) << "\n";
 
   dout << "Seek()" << " corr_coef=" << corr_coef_
-       << " rank=" <<  b0_ + b1_ * SliceToDouble(suffix) << "  ";
+       << " rank=" <<  b0_ + b1_ * SliceToDouble(suffix) << "  \n";
 return b0_ + b1_ * SliceToDouble(suffix);
 }
 
 bool MseIndex::Seek(Slice slice, uint32_t* index) {
+  if (!Valid()) {
+    return false;
+  }
+
+  dout << "corr_coef=" << corr_coef_ << "\n";
+
   if (corr_coef_ > 5) {
     return false;
   }
@@ -141,9 +160,10 @@ double MseIndex::SliceToDouble(Slice slice) {
   double base = base_;
   for (size_t i = 0; i < slice.size(); i++, base/=256) {
     t += base * static_cast<double>(
-        *reinterpret_cast<const uint8_t*>(slice.data() + i));
-//    t += (double)slice[i] * base;
-//    dout << "slice to double [" << i << "]:" << slice[i] << " " << t << "\n";
+                    *reinterpret_cast<const uint8_t*>(slice.data() + i));
+    //    t += (double)slice[i] * base;
+    //    dout << "slice to double [" << i << "]:" << slice[i] << " " << t <<
+    //    "\n";
   }
 
   return t;
@@ -156,7 +176,7 @@ void MseIndex::Reset() {
   mse_.Reset();
   b0_ = 0;
   b1_ = 0;
-  corr_coef_ = 10;
+  corr_coef_ = kInitCorrCoef;
 
   cnt_ = actual_cnt_;
   // estimate the length of prefix of the next block.
@@ -169,7 +189,7 @@ void MseIndex::Reset() {
   }
 
   actual_cnt_ = 0;
-  actual_prefix_len_ = 0; // doesnt' matter, will be set in Finish();
+  actual_prefix_len_ = 0; // doesn't matter, will be set in Finish();
 
   long base = 1;
   for (; base < cnt_; base <<= 1){

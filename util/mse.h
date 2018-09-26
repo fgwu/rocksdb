@@ -16,6 +16,9 @@
 
 namespace rocksdb {
 
+extern double kInvalidFlag;
+extern double kInitCorrCoef;
+
 class Mse {
  public:
   Mse(): cnt_(0), t_sum_(0), y_sum_(0), t2_sum_(0), y2_sum_(0), ty_sum_(0) {}
@@ -34,18 +37,25 @@ class Mse {
 
 class MseIndex {
  public:
-  MseIndex(): b0_(0), b1_(0),
-              corr_coef_(10),// corr_coef should [-1, 1]. 10 means invalid
-              cnt_(-1), // -1 means first_, last_, and cnt_ is not set.
-              prefix_len_(0), base_(1),
-              actual_cnt_(0){}
+  MseIndex()
+      : b0_(0),
+        b1_(0),
+        corr_coef_(kInitCorrCoef),  // corr_coef should [-1, 1]. kInitCorrCoef
+                                    // means invalid
+        cnt_(-1),  // -1 means first_, last_, and cnt_ is not set.
+        prefix_len_(0),
+        base_(1),
+        actual_cnt_(0) {}
 
-  MseIndex(Slice first, Slice last, long cnt):
-      b0_(0), b1_(0),
-      corr_coef_(10), // corr_coef should [-1, 1]. 10 means invalid
-      first_(first),
-      last_(last),
-      cnt_(cnt), actual_cnt_(0) {
+  MseIndex(Slice first, Slice last, long cnt)
+      : b0_(0),
+        b1_(0),
+        corr_coef_(kInitCorrCoef),  // corr_coef should [-1, 1]. kInitCorrCoef
+                                    // means invalid
+        first_(first),
+        last_(last),
+        cnt_(cnt),
+        actual_cnt_(0) {
     prefix_len_ = CommonPrefixLen(first, last);
     long base = 1;
     for (; base < cnt; base <<= 1){
@@ -54,12 +64,14 @@ class MseIndex {
     base_ = base;
   }
 
-  MseIndex(size_t prefix_len, long cnt):
-      b0_(0), b1_(0),
-      corr_coef_(10), // corr_coef should [-1, 1]. 10 means invalid
-      cnt_(cnt),
-      prefix_len_(prefix_len),
-      actual_cnt_(0){
+  MseIndex(size_t prefix_len, long cnt)
+      : b0_(0),
+        b1_(0),
+        corr_coef_(kInitCorrCoef),  // corr_coef should [-1, 1]. kInitCorrCoef
+                                    // means invalid
+        cnt_(cnt),
+        prefix_len_(prefix_len),
+        actual_cnt_(0) {
     long base = 1;
     for (; base < cnt; base <<= 1){
       ; // do nothing
@@ -121,6 +133,9 @@ class MseIndex {
     return Slice(slice.data() + prefix_len_, slice.size() - prefix_len_);
   }
 
+  bool inline Valid() { return corr_coef_ != kInvalidFlag; }
+
+  void inline SetInvalid() { corr_coef_ = kInvalidFlag; }
 
   Mse mse_;
   double b0_;
